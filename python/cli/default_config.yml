@@ -1,0 +1,21 @@
+# =============================================================================
+# MLDEPLOY v0.0.0 - Configuration File
+# -----------------------------------------------------------------------------
+# Comments below describe available configuration options.
+# Uncomment and add details as needed to suit your project.
+# 
+# Contents:
+#   1. Environment details
+#     1.1. Python version
+#     1.2. Base docker image
+# =============================================================================
+
+
+# 1. Environment details.
+# -----------------------------------------------------------------------------
+# 1.1. Python version.
+python-version: 3.8
+
+# 1.2 Base docker image.
+base-image: python:3.8-alpine3.11
+
