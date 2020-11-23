@@ -8,7 +8,12 @@
 #   1. Environment details
 #     1.1. Python version
 #     1.2. Base docker image
+#
+# -----------------------------------------------------------------------------
+# Author: kingfischer16 (https://github.com/kingfischer16/mldeploy)
 # =============================================================================
+
+project-name: 
 
 
 # 1. Environment details.
