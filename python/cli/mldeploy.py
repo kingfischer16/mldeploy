@@ -31,6 +31,9 @@ import fire  # The python-fire CLI engine.
 # -----------------------------------------------------------------------------
 CURR_DIR = os.getcwd()
 REG_FILE_NAME = '.registry.json'
+DEFAULT_PROJECT_MODULES = [
+    'boto3'
+]
 
 
 # =============================================================================
@@ -206,7 +209,8 @@ def _create_requirements_file(name: str) -> NoReturn:
     if not os.path.exists(reqs_file_path):
         print("\tCreating 'requirements.txt' file for project.")
         with open(reqs_file_path, 'w') as f:
-            f.write("boto3\n")
+            for module in DEFAULT_PROJECT_MODULES:
+                f.write(module+"\n")
 
 
 def _create_new_project_folder(name: str) -> NoReturn:
