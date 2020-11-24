@@ -83,6 +83,7 @@ def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
         print(f"\tProject folder created.")
         _copy_and_update_config(name)
         print(f"\tConfiguration file created.")
+        _create_requirements_file(name)
         print(f"Successfully created project '{name}' in '{path_dir}'")
 
 
@@ -192,6 +193,20 @@ def _copy_and_update_config(name: str) -> NoReturn:
     with open(config_file, 'w') as f:
         yaml_obj.dump(doc, f)
     return
+
+
+def _create_requirements_file(name: str) -> NoReturn:
+    """
+    Creates a new requirements file for the project.
+
+    Args:
+        name (str): The name of the project.
+    """
+    reqs_file_path = _get_project_folder(name)+'/requirements.txt'
+    if not os.path.exists(reqs_file_path):
+        print("\tCreating 'requirements.txt' file for project.")
+        with open(reqs_file_path, 'w') as f:
+            f.write("boto3\n")
 
 
 def _create_new_project_folder(name: str) -> NoReturn:
