@@ -59,7 +59,7 @@ def ls() -> NoReturn:
     Lists all projects controlled by the CLI.
     """
     reg_data = _get_registry_data()
-    print(f"Registered projects:\n\t(project name --> location)")
+    print(f"Registered projects (project name --> location):")
     for p, loc in reg_data.items():
         print(f"\t{p} --> {loc['location']}")
     print(highlight(pformat("--- (End of list) ---"), PythonLexer(), Terminal256Formatter()))
@@ -73,7 +73,7 @@ def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
         name (str): The project name, which will also be the name of the folder.
         path (str): Optional. The path to where the project contents shall reside.
     """
-    path_dir = path + '/' + name
+    path_dir = path + name if path.endswith('/') else path + '/' + name
     reg_data = _get_registry_data()
     if name in reg_data.keys():
         print(f"Cannot create project with name '{name}'. Project name already exists at location: '{reg_data[name]['location']}'")
@@ -225,7 +225,8 @@ def _create_new_project_folder(name: str) -> NoReturn:
         _delete_project_from_registry(name)
         sys.exit()
     else:
-        os.mkdir(_get_project_folder(name))
+        print(_get_project_folder(name))
+        os.makedirs(_get_project_folder(name))
     return
 
 
