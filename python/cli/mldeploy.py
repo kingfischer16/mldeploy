@@ -253,6 +253,20 @@ def _delete_project_folder_and_registry(name: str) -> NoReturn:
     _delete_project_from_registry(name)
 
 
+def _get_docker_image_name(name: str) -> str:
+    """
+    Get the name of the docker image to use for the project.
+
+    Args:
+        name (str): Project name.
+    """
+    yaml_obj = ryml.YAML()
+    with open(_get_project_folder(name)+'/config.yml', 'r') as f:
+        doc = yaml_obj.load(f)
+    base_docker_image = doc['base-image']
+    return base_docker_image
+
+
 
 # =============================================================================
 # Main execution and function dictionary.
