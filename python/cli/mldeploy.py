@@ -1,11 +1,12 @@
 # =============================================================================
-# MLDEPLOY_APP.PY
+# MLDEPLOY.PY
 # -----------------------------------------------------------------------------
 # The main code file for the CLI.
 # 
 #  
 # The CLI is built using the following packages:
 #   - fire: Google-supported, turns functions into CLI
+#   - ruamel.yaml: Edit YAML files without affecting the structure or comments.
 # -----------------------------------------------------------------------------
 # Author: kingfischer16 (https://github.com/kingfischer16/mldeploy)
 # =============================================================================
@@ -48,11 +49,13 @@ def test() -> str:
     """
     return "This is a test. MLDeploy has installed successfully."
 
+
 def cwd() -> str:
     """
     Returns the current working directory of the CLI code.
     """
     return f"Current directory: {CURR_DIR}"
+
 
 def ls() -> NoReturn:
     """
@@ -63,6 +66,7 @@ def ls() -> NoReturn:
     for p, loc in reg_data.items():
         print(f"\t{p} --> {loc['location']}")
     print(highlight(pformat("--- (End of list) ---"), PythonLexer(), Terminal256Formatter()))
+
 
 def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
     """
@@ -265,7 +269,6 @@ def _get_docker_image_name(name: str) -> str:
         doc = yaml_obj.load(f)
     base_docker_image = doc['base-image']
     return base_docker_image
-
 
 
 # =============================================================================
