@@ -27,13 +27,13 @@ from typing import NoReturn, Dict
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
 import fire  # The python-fire CLI engine.
 
-from .utils import (_get_registry_data, _get_project_folder,
+from utils import (_get_registry_data, _get_project_folder,
     CURR_DIR, REG_FILE_NAME,
-    MSG_PREFIX, FAIL_PREFIX, NOTE_PREFIX)
-from .startup import (_create_registry_file_if_not_exists, _add_project_to_registry,
+    MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX)
+from startup import (_create_registry_file_if_not_exists, _add_project_to_registry,
     _create_new_project_folder, _copy_and_update_config, _create_requirements_file,
     _delete_project_folder_and_registry)
-from .docker_tools import _create_dockerfile
+from docker_tools import _get_or_create_dockerfile
 
 
 # =============================================================================
@@ -64,7 +64,7 @@ def ls() -> NoReturn:
     print(f"{MSG_PREFIX}Registered projects (project name --> location):")
     for p, loc in reg_data.items():
         print(f"\t{p} --> {loc['location']}")
-    print(f"{NOTE_PREFIX}--- (End of list) ---")
+    print(f"--- (End of list) ---")
 
 
 def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
@@ -79,7 +79,7 @@ def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
     path_dir = path + name if path.endswith('/') else path + '/' + name
     reg_data = _get_registry_data()
     if name in reg_data.keys():
-        print(f"{NOTE_PREFIX}Cannot create project with name '{name}'. Project name already exists at location: '{reg_data[name]['location']}'")
+        print(f"{FAIL_PREFIX}Cannot create project with name '{name}'. Project name already exists at location: '{reg_data[name]['location']}'")
         sys.exit()
     else:
         print(f"{MSG_PREFIX}Creating project '{name}'...")
@@ -92,7 +92,7 @@ def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
         print(f"\tConfiguration file created.")
         _create_requirements_file(name)
         print(f"{MSG_PREFIX}Successfully created project '{name}' in '{path_dir}'")
-        print(f"{MSG_PREFIX}Edit configuration file '{_get_project_folder(name)+'/config.yml'}' to set deployment details.")
+        print(f"{ACTION_PREFIX}Edit configuration file '{_get_project_folder(name)+'/config.yml'}' to set deployment details.")
 
 
 def delete(name: str) -> NoReturn:
@@ -108,12 +108,12 @@ def delete(name: str) -> NoReturn:
     if name not in reg_data.keys():
         print(f"{FAIL_PREFIX}Project with name '{name}' does not exist.")
     else:
-        user_confirm = input("Confirm this action to PERMANENTLY delete the local project by typing the name again (or press <Enter> to cancel): ")
+        user_confirm = input(f"{ACTION_PREFIX}Confirm this action to PERMANENTLY delete the local project by typing the name again (or press <Enter> to cancel): ")
         if name == user_confirm:
             _delete_project_folder_and_registry(name)
             print(f"{MSG_PREFIX}Contents for project '{name}' has been deleted.")
         else:
-            print(f"{MSG_PREFIX}Delete operation for project '{name}' has been aborted.")
+            print(f"{FAIL_PREFIX}Delete operation for project '{name}' was not completed.")
 
 
 def build(name: str = '') -> NoReturn:
@@ -129,7 +129,9 @@ def build(name: str = '') -> NoReturn:
         print(f"{FAIL_PREFIX}Project '' does not exist.")
         sys.exit()
     else:
-        _create_dockerfile(proj_name)
+        _get_or_create_dockerfile(proj_name)
+    
+    print(f"{MSG_PREFIX}Docker image built for project '{name}'.")
 
 
 # =============================================================================
@@ -141,5 +143,6 @@ if __name__ == '__main__':
         'cwd': cwd,
         'ls': ls,
         'create': create,
-        'delete': delete
+        'delete': delete,
+        'build': build
     })

@@ -31,9 +31,9 @@ DEFAULT_PROJECT_MODULES = [
     'boto3'
 ]
 APP_DIR_ON_IMAGE = "app"
-MSG_PREFIX = "\033[1;36;40m MLDeploy Message:: "
-FAIL_PREFIX = "\033[1;31;40m MLDeploy Failure:: "
-NOTE_PREFIX = "\033[1;33;40m "
+MSG_PREFIX = "\033[1;36;40m MLDeploy Message:: \033[0;37;40m "
+FAIL_PREFIX = "\033[1;31;40m MLDeploy Failure:: \033[0;37;40m "
+ACTION_PREFIX = "\033[1;33;40m MLDeploy Action Required:: \033[0;37;40m "
 
 
 # =============================================================================

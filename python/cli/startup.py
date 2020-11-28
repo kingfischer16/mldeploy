@@ -21,7 +21,7 @@ import shutil
 import json
 from typing import NoReturn, Dict
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
-from .utils import (_get_project_folder, _get_registry_data, _get_registry_path,
+from utils import (_get_project_folder, _get_registry_data, _get_registry_path,
     CURR_DIR, REG_FILE_NAME, DEFAULT_PROJECT_MODULES)
 
 
