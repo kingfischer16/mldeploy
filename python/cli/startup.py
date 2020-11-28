@@ -4,6 +4,7 @@
 # Code for the basic creation of the deployment project. Includes creation
 # of project folder, new configuration file and new requirements.txt file.
 # 
+# ***This file MUST ONLY import from 'utils.py' for 'mldeploy' functions.***
 #  
 # The CLI is built using the following packages:
 #   - ruamel.yaml: Edit YAML files without affecting the structure or comments.
@@ -20,28 +21,13 @@ import shutil
 import json
 from typing import NoReturn, Dict
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
-
-
-# =============================================================================
-# Constants.
-# -----------------------------------------------------------------------------
-CURR_DIR = os.getcwd()
-REG_FILE_NAME = '.registry.json'
-DEFAULT_PROJECT_MODULES = [
-    'boto3'
-]
+from .utils import (_get_project_folder, _get_registry_data, _get_registry_path,
+    CURR_DIR, REG_FILE_NAME, DEFAULT_PROJECT_MODULES)
 
 
 # =============================================================================
 # Helper functions for project creation.
 # -----------------------------------------------------------------------------
-def _get_registry_path() -> str:
-    """
-    Returns the full file path of the 'mldeploy' registry file.
-    """
-    return CURR_DIR+'/'+REG_FILE_NAME
-
-
 def _create_registry_file_if_not_exists() -> NoReturn:
     """
     Creates a registry file in the central code location. Registry file
@@ -55,18 +41,6 @@ def _create_registry_file_if_not_exists() -> NoReturn:
         with open(_get_registry_path(), 'w') as f:
             json.dump(data, f)
         return
-
-
-def _get_registry_data() -> Dict:
-    """
-    Returns the registry data as a Python dictionary.
-    """
-    try:
-        with open(_get_registry_path(), 'r') as f:
-            data = json.load(f)
-    except:
-        data = {}
-    return data
 
 
 def _add_project_to_registry(project_path: str) -> NoReturn:
@@ -147,17 +121,6 @@ def _create_new_project_folder(name: str) -> NoReturn:
         print(_get_project_folder(name))
         os.makedirs(_get_project_folder(name))
     return
-
-
-def _get_project_folder(name: str) -> str:
-    """
-    Returns the full folder path of the named project.
-
-    Args:
-        name (str): The name of the project.
-    """
-    reg_data = _get_registry_data()
-    return reg_data[name]['location']
 
 
 def _delete_project_folder_and_registry(name: str) -> NoReturn:

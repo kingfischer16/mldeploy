@@ -13,7 +13,7 @@
 
 import docker
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
-from mldeploy import *
+from .mldeploy import *
 
 print("\n\t\t\t--- Starting 'docker_test.py' script. ---\n")
 

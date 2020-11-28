@@ -3,6 +3,7 @@
 # -----------------------------------------------------------------------------
 # The main code file for the CLI.
 # 
+# ***This file MAY import from all other 'mldeploy' files.***
 #  
 # The CLI is built using the following packages:
 #   - fire: Google-supported, turns functions into CLI
@@ -26,9 +27,13 @@ from typing import NoReturn, Dict
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
 import fire  # The python-fire CLI engine.
 
-from .startup import (_get_registry_data, _create_registry_file_if_not_exists, _add_project_to_registry,
+from .utils import (_get_registry_data, _get_project_folder,
+    CURR_DIR, REG_FILE_NAME,
+    MSG_PREFIX, FAIL_PREFIX, NOTE_PREFIX)
+from .startup import (_create_registry_file_if_not_exists, _add_project_to_registry,
     _create_new_project_folder, _copy_and_update_config, _create_requirements_file,
-    _delete_project_folder_and_registry, CURR_DIR, REG_FILE_NAME)
+    _delete_project_folder_and_registry)
+from .docker_tools import _create_dockerfile
 
 
 # =============================================================================
@@ -41,14 +46,14 @@ def test() -> str:
     Returns:
         (str): A test string.
     """
-    return "This is a test. MLDeploy has installed successfully."
+    return f"{MSG_PREFIX}This is a test. MLDeploy has installed successfully."
 
 
 def cwd() -> str:
     """
     Returns the current working directory of the CLI code.
     """
-    return f"Current directory: {CURR_DIR}"
+    return f"{MSG_PREFIX}Current directory: {CURR_DIR}"
 
 
 def ls() -> NoReturn:
@@ -56,10 +61,10 @@ def ls() -> NoReturn:
     Lists all projects controlled by the CLI.
     """
     reg_data = _get_registry_data()
-    print(f"Registered projects (project name --> location):")
+    print(f"{MSG_PREFIX}Registered projects (project name --> location):")
     for p, loc in reg_data.items():
         print(f"\t{p} --> {loc['location']}")
-    print(highlight(pformat("--- (End of list) ---"), PythonLexer(), Terminal256Formatter()))
+    print(f"{NOTE_PREFIX}--- (End of list) ---")
 
 
 def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
@@ -74,9 +79,10 @@ def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
     path_dir = path + name if path.endswith('/') else path + '/' + name
     reg_data = _get_registry_data()
     if name in reg_data.keys():
-        print(f"Cannot create project with name '{name}'. Project name already exists at location: '{reg_data[name]['location']}'")
+        print(f"{NOTE_PREFIX}Cannot create project with name '{name}'. Project name already exists at location: '{reg_data[name]['location']}'")
+        sys.exit()
     else:
-        print(f"Creating project '{name}'...")
+        print(f"{MSG_PREFIX}Creating project '{name}'...")
         _create_registry_file_if_not_exists()
         _add_project_to_registry(project_path = path_dir)
         print(f"\tProject registered successfully.")
@@ -85,7 +91,8 @@ def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
         _copy_and_update_config(name)
         print(f"\tConfiguration file created.")
         _create_requirements_file(name)
-        print(f"Successfully created project '{name}' in '{path_dir}'")
+        print(f"{MSG_PREFIX}Successfully created project '{name}' in '{path_dir}'")
+        print(f"{MSG_PREFIX}Edit configuration file '{_get_project_folder(name)+'/config.yml'}' to set deployment details.")
 
 
 def delete(name: str) -> NoReturn:
@@ -97,18 +104,32 @@ def delete(name: str) -> NoReturn:
     Args:
         name (str): Name of the project to delete.
     """
-    reg_path = CURR_DIR+'/'+REG_FILE_NAME
-    with open(reg_path, 'r') as f:
-        reg_data = json.load(f)
+    reg_data = _get_registry_data()
     if name not in reg_data.keys():
-        print(f"Project with name '{name}' does not exist.")
+        print(f"{FAIL_PREFIX}Project with name '{name}' does not exist.")
     else:
         user_confirm = input("Confirm this action to PERMANENTLY delete the local project by typing the name again (or press <Enter> to cancel): ")
         if name == user_confirm:
             _delete_project_folder_and_registry(name)
-            print(f"Contents for project '{name}' has been deleted.")
+            print(f"{MSG_PREFIX}Contents for project '{name}' has been deleted.")
         else:
-            print(f"Delete operation for project '{name}' has been aborted.")
+            print(f"{MSG_PREFIX}Delete operation for project '{name}' has been aborted.")
+
+
+def build(name: str = '') -> NoReturn:
+    """
+    Builds the project's docker image from configuration files.
+
+    Args:
+        name (str): Name of the project to delete.
+    """
+    proj_name = os.getcwd().rsplit('/', 1)[1] if len(name)<=0 else name
+    registerd_projects = list(_get_registry_data().keys())
+    if proj_name not in registerd_projects:
+        print(f"{FAIL_PREFIX}Project '' does not exist.")
+        sys.exit()
+    else:
+        _create_dockerfile(proj_name)
 
 
 # =============================================================================
