@@ -19,11 +19,10 @@ import json
 import os
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
 import shutil
-import sys
-from typing import NoReturn, Dict
+from typing import NoReturn
 
 from utils import (_get_project_folder, _get_registry_data, _get_registry_path,
-    CURR_DIR, REG_FILE_NAME, DEFAULT_PROJECT_MODULES)
+    CURR_DIR, DEFAULT_PROJECT_MODULES)
 
 
 # =============================================================================

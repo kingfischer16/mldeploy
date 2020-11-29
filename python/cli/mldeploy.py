@@ -16,14 +16,7 @@
 # Imports.
 # -----------------------------------------------------------------------------
 import fire  # The python-fire CLI engine.
-import json
 import os
-from pprint import pformat
-from pygments import highlight
-from pygments.lexers import PythonLexer
-from pygments.formatters import Terminal256Formatter
-import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
-import shutil
 import sys
 from typing import NoReturn, Dict
 
@@ -31,7 +24,7 @@ from docker_tools import _build_or_get_image
 from cleanup import _delete_project_folder_and_registry
 from utils import (
     _get_registry_data, _get_project_folder, _get_registry_lists,
-    CURR_DIR, REG_FILE_NAME,
+    CURR_DIR,
     MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX
 )
 from startup import (
@@ -145,7 +138,6 @@ def build(name: str = '') -> NoReturn:
         sys.exit()
     else:
         _build_or_get_image(proj_name)
-
 
 
 # =============================================================================

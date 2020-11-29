@@ -13,6 +13,9 @@
 #     2.2. Files and folders to copy or clone
 #   3. Docker options
 #     3.1. Custom Dockerfile
+#   4. AWS settings
+#     4.1. EC2 instance settings
+#     4.2. REST API settings
 #
 # -----------------------------------------------------------------------------
 # Author: kingfischer16 (https://github.com/kingfischer16/mldeploy)
@@ -46,7 +49,7 @@ main-file:
 # 3.1. Custom Dockerfile
 # Path to a Dockerfile that you wish to use instead of building
 # one using the CLI. Overrides the building of the file.
-docker-file: /home/folder2/docks/Dockerfile
+#docker-file: /home/folder2/docks/Dockerfile
 
 # 3.2. Custom Docker image
 # Name of the Docker image you with to use intead of building
@@ -54,4 +57,25 @@ docker-file: /home/folder2/docks/Dockerfile
 # Docker image.
 # If a ':' character is included the name must be enclosed in
 # quotation marks.
-docker-image: "my_docker_image:2020-tag"
+#docker-image: "my_docker_image:2020-tag"
+
+
+# 4. AWS settings.
+# -----------------------------------------------------------------------------
+# 4.1. EC2 instance settings
+# Control the number and size of instances, autoscaling group settings,
+# scaling triggers, and availability.
+# aws-region: eu-north-1
+
+#availability-zones:
+#  - eu-north-1a
+#  - eu-north-1c
+
+#use-autoscaling: yes  # yes or no
+#min-instances: 0  # integer
+#target-instances: 0  # integer
+#max-instances: 1  # integer, must be greater than min-instances
+#increase-delay: 10  # seconds, time before instance is added after increase trigger
+#decrease-delay: 300  # seconds, time before instance is removed after decrease trigger
+#max-jobs-per-instance-before-scaleup: 3  # integer, maximum number of jobs allowed (per active instance) in queue before an instance is added, no scaleup trigger set if none provided
+#min-jobs-per-instance-before-scaledown: 1  # intever, minimum number of jobs allowed (per active instance) in queue before an instance is removed, no scaledown trigger set if none provided

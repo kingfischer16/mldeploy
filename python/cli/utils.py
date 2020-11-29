@@ -16,7 +16,6 @@
 # Imports.
 # -----------------------------------------------------------------------------
 from collections import OrderedDict
-import docker
 import json
 import os
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.

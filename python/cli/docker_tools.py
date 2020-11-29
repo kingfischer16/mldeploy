@@ -48,6 +48,7 @@ def _create_dockerfile(name: str) -> NoReturn:
     Creates a new Dockerfile for the project.
     """
     print(f"{MSG_PREFIX}Building Dockerfile from project configuration.")
+    
     LEND = "\n"  # Line ender for Dockerfile.
     # List holding the Dockerfile lines in order.
     dockerfile_list = []
@@ -136,6 +137,7 @@ def _build_or_get_image(name: str) -> NoReturn:
             return
     _get_or_create_dockerfile(name)
     _build_docker_image(name)
+
 
 def _build_docker_image(name: str) -> NoReturn:
     """
