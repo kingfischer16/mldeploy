@@ -16,11 +16,15 @@
 # Imports.
 # -----------------------------------------------------------------------------
 import os
-import docker
+import shutil
+from datetime import datetime
 from typing import NoReturn, List
+
+import docker
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
-from utils import (_get_project_folder, _get_config_data,
-    APP_DIR_ON_IMAGE)
+
+from utils import (_get_project_folder, _get_config_data, _add_field_to_registry,
+    MSG_PREFIX, APP_DIR_ON_IMAGE)
 
 
 # =============================================================================
@@ -44,13 +48,14 @@ def _create_dockerfile(name: str) -> NoReturn:
     """
     Creates a new Dockerfile for the project.
     """
+    print(f"{MSG_PREFIX}Building Dockerfile from project configuration.")
     LEND = "\n"  # Line ender for Dockerfile.
     # List holding the Dockerfile lines in order.
     dockerfile_list = []
     code_paths = _get_code_paths(name)
 
     # Start building Dockerfile.
-    dockerfile_list.append(f"FROM {_get_docker_image_name(name)}{LEND}")
+    dockerfile_list.append(f"FROM {_get_base_image_name(name)}{LEND}")
     dockerfile_list.append(f"RUN apt-get update{LEND}")
 
     # Install Python.
@@ -76,6 +81,9 @@ def _create_dockerfile(name: str) -> NoReturn:
     with open(_get_project_folder(name)+"/Dockerfile", 'w') as dfile:
         for line in dockerfile_list:
             dfile.write(line+LEND)
+    
+    # Register Dockerfile.
+    _add_field_to_registry(name, 'dockerfile', _get_project_folder(name)+"/Dockerfile")
 
 
 def _get_custom_dockerfile(name: str) -> bool:
@@ -90,17 +98,63 @@ def _get_custom_dockerfile(name: str) -> bool:
     Returns:
         (bool): True if a custom Dockerfile is found, False if none is found.
     """
-    return False
+    # Find Dockerfile.
+    data = _get_config_data(name)
+    if 'docker-file' in data.keys():
+        docker_file_loc = data['docker-file']
+        if docker_file_loc is None:
+            return False
+        if not os.path.exists(docker_file_loc):
+            return False
+    else:
+        return False
+    
+    # Copy Dockerfile to project folder.
+    print(f"{MSG_PREFIX}Copying user-defined Dockerfile to project folder.")
+    proj_folder = _get_project_folder(name)
+    shutil.copy(src=docker_file_loc, dst=proj_folder+'/Dockerfile')
 
+    # Register Dockerfile.
+    _add_field_to_registry(name, 'dockerfile', _get_project_folder(name)+"/Dockerfile")
+    return True
+
+
+# =============================================================================
+# Docker image creation.
+# -----------------------------------------------------------------------------
+def _build_or_get_image(name: str) -> NoReturn:
+    """
+    Decides whether to get a user-defined Docker image or to
+    build one from the registered Dockerfile.
+    """
+    conf_data = _get_config_data(name)
+    if 'docker-image' in conf_data.keys():
+        image_name = conf_data['docker-image']
+        if image_name is not None:
+            # Register Docker image.
+            print(f"{MSG_PREFIX}Using user-defined Docker image: {image_name}")
+            _add_field_to_registry(name, 'docker-image', image_name)
+            return
+    _build_docker_image(name)
 
 def _build_docker_image(name: str) -> NoReturn:
     """
     Build the docker image from the information in the project
     folder.
     """
+    print(f"{MSG_PREFIX}Building Docker image from Dockerfile...")
+    client = docker.from_env()
+
+    image_name = _generate_image_name(name)
+    # Register Docker image.
+    print(f"{MSG_PREFIX}Docker image build succeeded: {image_name}")
+    _add_field_to_registry(name, 'docker-image', image_name)
 
 
-def _get_docker_image_name(name: str) -> str:
+# =============================================================================
+# Dockerfile helper functions.
+# -----------------------------------------------------------------------------
+def _get_base_image_name(name: str) -> str:
     """
     Get the name of the docker image to use for the project.
 
@@ -128,3 +182,16 @@ def _get_code_paths(name: str) -> List:
     else:
         file_list = [] if all([n is None for n in file_list]) else file_list
     return file_list
+
+
+def _generate_image_name(name: str) -> str:
+    """
+    Generates a Docker image name from the project name. The naming
+    convention uses datetime as follows:
+        <project-name>_mldeploy:YYYYMMDD-HHMMSS
+    
+    Args:
+        name (str): Project name.
+    """
+    dt_string = datetime.now().strftime("%Y%m%d-%H%M%S")
+    return f"{name}_mldeploy:{dt_string}"

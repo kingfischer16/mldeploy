@@ -27,7 +27,7 @@ from typing import NoReturn, Dict
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
 import fire  # The python-fire CLI engine.
 
-from utils import (_get_registry_data, _get_project_folder,
+from utils import (_get_registry_data, _get_project_folder, _get_registry_lists,
     CURR_DIR, REG_FILE_NAME,
     MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX)
 from startup import (_create_registry_file_if_not_exists, _add_project_to_registry,
@@ -60,11 +60,18 @@ def ls() -> NoReturn:
     """
     Lists all projects controlled by the CLI.
     """
-    reg_data = _get_registry_data()
-    print(f"{MSG_PREFIX}Registered projects (project name --> location):")
-    for p, loc in reg_data.items():
-        print(f"\t{p} --> {loc['location']}")
-    print(f"--- (End of list) ---")
+    reg_lists = _get_registry_lists()
+    print(f"{MSG_PREFIX}Registered projects:\n")
+    headers = list(reg_lists.keys())
+    header_string = ''.join(headers)
+    print(header_string)
+    print('-'*len(header_string))
+    for i in range(len(reg_lists[headers[0]])):
+        proj_str = ''
+        for k in headers:
+            proj_str += reg_lists[k][i]
+        print(proj_str)
+    print(f"\n--- (End of list) ---")
 
 
 def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:

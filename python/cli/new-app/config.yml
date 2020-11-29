@@ -18,7 +18,7 @@
 # Author: kingfischer16 (https://github.com/kingfischer16/mldeploy)
 # =============================================================================
 
-project-name: 
+project-name: new-app
 
 
 # 1. Environment details.
@@ -33,7 +33,7 @@ base-image: debian:slim-buster
 # 2. Program setup.
 # -----------------------------------------------------------------------------
 # 2.1. Main execution file.
-main-file: 
+main-file:
 
 # 2.2. Files and folders to copy or clone
 #add-files:
@@ -54,4 +54,4 @@ docker-file: /home/folder2/docks/Dockerfile
 # Docker image.
 # If a ':' character is included the name must be enclosed in
 # quotation marks.
-docker-image: "my_docker_image:2020-tag"
+docker-image: my_docker_image:2020-tag
