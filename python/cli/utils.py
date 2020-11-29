@@ -18,9 +18,10 @@
 from collections import OrderedDict
 import json
 import os
+import pathlib
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
 import sys
-from typing import NoReturn, List, Union, Dict
+from typing import NoReturn, List, Union, Dict, Any
 
 
 # =============================================================================
@@ -40,11 +41,28 @@ ACTION_PREFIX = "\033[1;33;40m MLDeploy Action Required:: \033[m"
 # =============================================================================
 # Registry utilities.
 # -----------------------------------------------------------------------------
+def _get_appdata_folder() -> str:
+    """
+    Gets the folder location on the local machine where 'mldeploy'
+    can store application-wide data, such as the '.registry.json'
+    file.
+    """
+    user_home = pathlib.Path.home()
+    if sys.platform == "linux":
+        appdata_folder = user_home / ".local/share"
+    elif sys.platform == "win32":
+        appdata_folder = user_home / "AppData/Roaming"
+    else:
+        raise ValueError(f"Unknown operating system: {sys.platform}")
+    return str(appdata_folder) + "/mldeploy"
+
+
 def _get_registry_path() -> str:
     """
     Returns the full file path of the 'mldeploy' registry file.
     """
-    return CURR_DIR+'/'+REG_FILE_NAME
+    appdata_folder = _get_appdata_folder()
+    return appdata_folder+'/'+REG_FILE_NAME
 
 
 def _get_registry_data() -> Dict:

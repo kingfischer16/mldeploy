@@ -21,7 +21,7 @@ import ruamel.yaml as ryml  # Allows modification of YAML file without disruptin
 import shutil
 from typing import NoReturn
 
-from utils import (_get_project_folder, _get_registry_data, _get_registry_path,
+from utils import (_get_project_folder, _get_registry_data, _get_registry_path, _get_appdata_folder,
     CURR_DIR, DEFAULT_PROJECT_MODULES)
 
 
@@ -38,6 +38,8 @@ def _create_registry_file_if_not_exists() -> NoReturn:
         return
     else:
         data = {}
+        if not os.path.exists(_get_appdata_folder()):
+            os.makedirs(_get_appdata_folder())
         with open(_get_registry_path(), 'w') as f:
             json.dump(data, f)
         return

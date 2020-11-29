@@ -22,15 +22,16 @@ from typing import NoReturn, Dict
 
 from docker_tools import _build_or_get_image
 from cleanup import _delete_project_folder_and_registry
-from utils import (
-    _get_registry_data, _get_project_folder, _get_registry_lists,
-    CURR_DIR,
-    MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX
-)
 from startup import (
     _create_registry_file_if_not_exists, _add_project_to_registry,
     _create_new_project_folder, _copy_and_update_config, _create_requirements_file
 )
+from utils import (
+    _get_registry_data, _get_project_folder, _get_registry_lists, _get_appdata_folder,
+    CURR_DIR,
+    MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX
+)
+
 
 
 # =============================================================================
@@ -71,7 +72,8 @@ def ls() -> NoReturn:
     print(f"\n--- (End of list) ---\n")
 
 
-def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
+def create(name: str = 'mldeploy_project',
+    path: str = _get_appdata_folder()) -> NoReturn:
     """
     Creates a new project, including project folder, configuration file,
     and project registry.
@@ -79,7 +81,7 @@ def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
     Args:
         name (str): The project name, which will also be the name of the folder.
 
-        path (str): Optional. The path to where the project contents shall reside.
+        path (str): Optional. The path to where the project contents shall reside. Default is the local application data folder.
     """
     path_dir = path + name if path.endswith('/') else path + '/' + name
     reg_data = _get_registry_data()

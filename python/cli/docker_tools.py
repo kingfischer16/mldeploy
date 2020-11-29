@@ -48,7 +48,7 @@ def _create_dockerfile(name: str) -> NoReturn:
     Creates a new Dockerfile for the project.
     """
     print(f"{MSG_PREFIX}Building Dockerfile from project configuration.")
-    
+
     LEND = "\n"  # Line ender for Dockerfile.
     # List holding the Dockerfile lines in order.
     dockerfile_list = []
@@ -198,3 +198,26 @@ def _generate_image_name(name: str) -> str:
     """
     dt_string = datetime.now().strftime("%Y%m%d-%H%M%S")
     return f"{name}_mldeploy:{dt_string}"
+
+
+def _delete_image(name: str) -> NoReturn:
+    """
+    Deletes the currently registered image from the local Docker
+    engine. Custom images are not deleted, and built images are only
+    deleted if replacement is set in the configuration file.
+
+    Args:
+        name (str): Project name.
+    """
+    # Check if image should be deleted: if rebuild is not allowed
+    # or custom image is found.
+    config_data = _get_config_data(name)
+    if 'replace-image-on-rebuild' is config_data.keys():
+        delete_existing = config_data['replace-image-on-rebuild']
+    else:
+        delete_existing = False
+    if 'docker-image' in config_data.keys():
+        image_name = config_data['docker-image']
+        if image_name is not None:
+            delete_existing = False
+    print(f"Delete existing image: {delete_existing}")

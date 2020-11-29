@@ -59,6 +59,11 @@ main-file:
 # quotation marks.
 #docker-image: "my_docker_image:2020-tag"
 
+# 3.3. Replace Docker image on rebuild
+# Deletes the existing Docker image that is saved before building the
+# new one. Does not delete any image if a custom Docker image is used.
+replace-image-on-rebuild: true
+
 
 # 4. AWS settings.
 # -----------------------------------------------------------------------------
