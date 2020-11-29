@@ -15,13 +15,11 @@
 # =============================================================================
 # Imports.
 # -----------------------------------------------------------------------------
-import os
-import shutil
 from datetime import datetime
-from typing import NoReturn, List
-
-import docker
+import os
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
+import shutil
+from typing import NoReturn, List
 
 from utils import (_get_project_folder, _get_config_data, _add_field_to_registry,
     MSG_PREFIX, APP_DIR_ON_IMAGE)
@@ -135,6 +133,7 @@ def _build_or_get_image(name: str) -> NoReturn:
             print(f"{MSG_PREFIX}Using user-defined Docker image: {image_name}")
             _add_field_to_registry(name, 'docker-image', image_name)
             return
+    _get_or_create_dockerfile(name)
     _build_docker_image(name)
 
 def _build_docker_image(name: str) -> NoReturn:
@@ -143,10 +142,11 @@ def _build_docker_image(name: str) -> NoReturn:
     folder.
     """
     print(f"{MSG_PREFIX}Building Docker image from Dockerfile...")
-    client = docker.from_env()
+    #client = docker.from_env()
 
     image_name = _generate_image_name(name)
     # Register Docker image.
+    
     print(f"{MSG_PREFIX}Docker image build succeeded: {image_name}")
     _add_field_to_registry(name, 'docker-image', image_name)
 

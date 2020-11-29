@@ -18,7 +18,7 @@
 # Author: kingfischer16 (https://github.com/kingfischer16/mldeploy)
 # =============================================================================
 
-project-name: new-app5
+project-name: my-new-app
 
 
 # 1. Environment details.
@@ -46,7 +46,7 @@ main-file:
 # 3.1. Custom Dockerfile
 # Path to a Dockerfile that you wish to use instead of building
 # one using the CLI. Overrides the building of the file.
-docker-file: /home/folder2/docks/Dockerfile
+#docker-file: /home/folder2/docks/Dockerfile
 
 # 3.2. Custom Docker image
 # Name of the Docker image you with to use intead of building
@@ -54,4 +54,4 @@ docker-file: /home/folder2/docks/Dockerfile
 # Docker image.
 # If a ':' character is included the name must be enclosed in
 # quotation marks.
-docker-image: my_docker_image:2020-tag
+#docker-image: my_docker_image:2020-tag

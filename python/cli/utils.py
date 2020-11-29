@@ -15,14 +15,13 @@
 # =============================================================================
 # Imports.
 # -----------------------------------------------------------------------------
-import os
-import sys
-import json
 from collections import OrderedDict
-from typing import NoReturn, List, Union, Dict
-
 import docker
+import json
+import os
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
+import sys
+from typing import NoReturn, List, Union, Dict
 
 
 # =============================================================================
@@ -166,7 +165,6 @@ def _get_registry_lists() -> Dict:
         d_reg[fnames['name']].append(pname)
         d_reg[fnames['folder']].append(_get_field_if_exists(pname, 'location'))
         d_reg[fnames['image']].append(_get_field_if_exists(pname, 'docker-image'))
-    print(d_reg)
     
     # Pad strings.
     d_flen = { k:0 for k in d_reg.keys()}

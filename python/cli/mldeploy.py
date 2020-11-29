@@ -15,25 +15,29 @@
 # =============================================================================
 # Imports.
 # -----------------------------------------------------------------------------
-import os
-import sys
-import shutil
+import fire  # The python-fire CLI engine.
 import json
+import os
+from pprint import pformat
 from pygments import highlight
 from pygments.lexers import PythonLexer
 from pygments.formatters import Terminal256Formatter
-from pprint import pformat
-from typing import NoReturn, Dict
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
-import fire  # The python-fire CLI engine.
+import shutil
+import sys
+from typing import NoReturn, Dict
 
-from utils import (_get_registry_data, _get_project_folder, _get_registry_lists,
+from docker_tools import _build_or_get_image
+from cleanup import _delete_project_folder_and_registry
+from utils import (
+    _get_registry_data, _get_project_folder, _get_registry_lists,
     CURR_DIR, REG_FILE_NAME,
-    MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX)
-from startup import (_create_registry_file_if_not_exists, _add_project_to_registry,
-    _create_new_project_folder, _copy_and_update_config, _create_requirements_file,
-    _delete_project_folder_and_registry)
-from docker_tools import _get_or_create_dockerfile
+    MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX
+)
+from startup import (
+    _create_registry_file_if_not_exists, _add_project_to_registry,
+    _create_new_project_folder, _copy_and_update_config, _create_requirements_file
+)
 
 
 # =============================================================================
@@ -71,7 +75,7 @@ def ls() -> NoReturn:
         for k in headers:
             proj_str += reg_lists[k][i]
         print(proj_str)
-    print(f"\n--- (End of list) ---")
+    print(f"\n--- (End of list) ---\n")
 
 
 def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
@@ -81,6 +85,7 @@ def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
 
     Args:
         name (str): The project name, which will also be the name of the folder.
+
         path (str): Optional. The path to where the project contents shall reside.
     """
     path_dir = path + name if path.endswith('/') else path + '/' + name
@@ -88,6 +93,8 @@ def create(name: str = 'mldeploy_project', path: str = CURR_DIR) -> NoReturn:
     if name in reg_data.keys():
         print(f"{FAIL_PREFIX}Cannot create project with name '{name}'. Project name already exists at location: '{reg_data[name]['location']}'")
         sys.exit()
+    elif os.path.exists(path_dir):
+        print(f"{FAIL_PREFIX}Cannot create project at specified path: {path_dir}. Folder already exists.")
     else:
         print(f"{MSG_PREFIX}Creating project '{name}'...")
         _create_registry_file_if_not_exists()
@@ -125,7 +132,8 @@ def delete(name: str) -> NoReturn:
 
 def build(name: str = '') -> NoReturn:
     """
-    Builds the project's docker image from configuration files.
+    Builds the project's Docker image from configuration files or uses
+    user-defined Dockerfile or Docker image.
 
     Args:
         name (str): Name of the project to delete.
@@ -136,9 +144,8 @@ def build(name: str = '') -> NoReturn:
         print(f"{FAIL_PREFIX}Project '' does not exist.")
         sys.exit()
     else:
-        _get_or_create_dockerfile(proj_name)
-    
-    print(f"{MSG_PREFIX}Docker image built for project '{name}'.")
+        _build_or_get_image(proj_name)
+
 
 
 # =============================================================================

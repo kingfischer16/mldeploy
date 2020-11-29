@@ -15,12 +15,13 @@
 # =============================================================================
 # Imports.
 # -----------------------------------------------------------------------------
-import os
-import sys
-import shutil
 import json
-from typing import NoReturn, Dict
+import os
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
+import shutil
+import sys
+from typing import NoReturn, Dict
+
 from utils import (_get_project_folder, _get_registry_data, _get_registry_path,
     CURR_DIR, REG_FILE_NAME, DEFAULT_PROJECT_MODULES)
 
@@ -54,19 +55,6 @@ def _add_project_to_registry(project_path: str) -> NoReturn:
     project_name = project_path.rsplit('/', 1)[1]
     data = _get_registry_data()
     data.update({f"{project_name}": {"location": project_path}})
-    with open(_get_registry_path(), 'w') as f:
-        json.dump(data, f)
-
-
-def _delete_project_from_registry(name: str) -> NoReturn:
-    """
-    Deletes a project entry from the registry file.
-
-    Args:
-        name (str): The name of the project.
-    """
-    data = _get_registry_data()
-    data.pop(name, None)
     with open(_get_registry_path(), 'w') as f:
         json.dump(data, f)
 
@@ -114,22 +102,9 @@ def _create_new_project_folder(name: str) -> NoReturn:
         name (str): The name of the project.
     """
     if os.path.exists(_get_project_folder(name)):
-        print(f"Folder for project '{name}' already exists: '{_get_project_folder(name)}'")
-        _delete_project_from_registry(name)
-        sys.exit()
+        raise ValueError(f"Project folder for '{name}' already exists.")
     else:
         print(_get_project_folder(name))
         os.makedirs(_get_project_folder(name))
     return
 
-
-def _delete_project_folder_and_registry(name: str) -> NoReturn:
-    """
-    Permanently deletes the project folder and registry.
-
-    Args:
-        name (str): The name of the project.
-    """
-    if os.path.exists(_get_project_folder(name)):
-        shutil.rmtree(_get_project_folder(name))
-    _delete_project_from_registry(name)
