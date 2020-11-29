@@ -16,6 +16,7 @@
 # Imports.
 # -----------------------------------------------------------------------------
 from datetime import datetime
+import docker
 import os
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
 import shutil
