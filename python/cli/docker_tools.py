@@ -22,7 +22,7 @@ import ruamel.yaml as ryml  # Allows modification of YAML file without disruptin
 import shutil
 from typing import NoReturn, List
 
-from utils import (_get_project_folder, _get_config_data, _add_field_to_registry,
+from utils import (_get_project_folder, _get_config_data, _add_field_to_registry, _get_registry_data,
     MSG_PREFIX, APP_DIR_ON_IMAGE)
 
 
@@ -145,7 +145,11 @@ def _build_docker_image(name: str) -> NoReturn:
     folder.
     """
     print(f"{MSG_PREFIX}Building Docker image from Dockerfile...")
+    dockerfile_path = _get_registry_data()[name]['dockerfile']
+    # Remove 'Dockerfile' from the end of the path.
+    dockerfile_path = dockerfile_path.rsplit('/', 1)[0]+'/'
     #client = docker.from_env()
+
 
     image_name = _generate_image_name(name)
     # Register Docker image.
@@ -200,7 +204,7 @@ def _generate_image_name(name: str) -> str:
     return f"{name}_mldeploy:{dt_string}"
 
 
-def _delete_image(name: str) -> NoReturn:
+def _delete_image(name: str, deleting_project=False) -> NoReturn:
     """
     Deletes the currently registered image from the local Docker
     engine. Custom images are not deleted, and built images are only
@@ -208,6 +212,10 @@ def _delete_image(name: str) -> NoReturn:
 
     Args:
         name (str): Project name.
+
+        deleting_project (bool): Set to True to bypass the rebuild checks
+         and delete the image when permanently deleting the project. Default
+         is False which lets the checks happen.
     """
     # Check if image should be deleted: if rebuild is not allowed
     # or custom image is found.

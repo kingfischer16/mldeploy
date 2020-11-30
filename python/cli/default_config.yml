@@ -27,10 +27,10 @@ project-name:
 # 1. Environment details.
 # -----------------------------------------------------------------------------
 # 1.1. Python version.
-python-version: 3.8
+#python-version: 3.8
 
 # 1.2 Base docker image.
-base-image: debian:slim-buster
+base-image: python:3.8-slim-buster
 
 
 # 2. Program setup.
