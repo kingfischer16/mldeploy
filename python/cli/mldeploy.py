@@ -21,7 +21,7 @@ import sys
 from typing import NoReturn, Dict
 
 from docker_tools import _build_or_get_image
-from cleanup import _delete_project_folder_and_registry
+from cleanup import _delete_project
 from startup import (
     _create_registry_file_if_not_exists, _add_project_to_registry,
     _create_new_project_folder, _copy_and_update_config, _create_requirements_file
@@ -31,7 +31,6 @@ from utils import (
     CURR_DIR,
     MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX
 )
-
 
 
 # =============================================================================
@@ -119,7 +118,7 @@ def delete(name: str) -> NoReturn:
     else:
         user_confirm = input(f"{ACTION_PREFIX}Confirm this action to PERMANENTLY delete the local project by typing the name again (or press <Enter> to cancel): ")
         if name == user_confirm:
-            _delete_project_folder_and_registry(name)
+            _delete_project(name)
             print(f"{MSG_PREFIX}Contents for project '{name}' has been deleted.")
         else:
             print(f"{FAIL_PREFIX}Delete operation for project '{name}' was not completed.")
@@ -136,10 +135,11 @@ def build(name: str = '') -> NoReturn:
     proj_name = os.getcwd().rsplit('/', 1)[1] if len(name)<=0 else name
     registerd_projects = list(_get_registry_data().keys())
     if proj_name not in registerd_projects:
-        print(f"{FAIL_PREFIX}Project '' does not exist.")
+        print(f"{FAIL_PREFIX}Project '{proj_name}' does not exist.")
         sys.exit()
     else:
         _build_or_get_image(proj_name)
+        print(f"{MSG_PREFIX}Project build successful.")
 
 
 # =============================================================================

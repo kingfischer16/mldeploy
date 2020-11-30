@@ -19,12 +19,24 @@ import os
 import shutil
 from typing import NoReturn
 
-from utils import (_get_registry_data, _get_registry_path, _get_project_folder)
+from utils import (_get_registry_data, _get_registry_path, _get_project_folder,
+    _delete_docker_image)
 
 
 # =============================================================================
 # Cleanup functions.
 # -----------------------------------------------------------------------------
+def _delete_project(name: str) -> NoReturn:
+    """
+    Permanently deletes all components of a project.
+
+    Args:
+        name (str): Project name.
+    """
+    _delete_project_folder_and_registry(name)
+    _delete_docker_image(name, deleting_project=True)
+
+
 def _delete_project_folder_and_registry(name: str) -> NoReturn:
     """
     Permanently deletes the project folder and registry.

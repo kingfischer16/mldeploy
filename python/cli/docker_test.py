@@ -24,22 +24,24 @@ print(f"Selected base image: {base_image}")
 client = docker.from_env()
 print(f"Docker client: {client}")
 print(f"Images:")
-print(client.images.list())
 
-new_image, _ = client.images.build(
-    path='/home/lee/.local/share/mldeploy/dogs/',
-    tag=new_image_name, rm=True, forcerm=True
-)
-new_image_id = new_image.id
-new_image_tag = new_image.tags
+for im in client.images.list():
+    print(im.tags[0])
 
-print(new_image_id, new_image_tag)
+#new_image, _ = client.images.build(
+#    path='/home/lee/.local/share/mldeploy/dogs/',
+#    tag=new_image_name, rm=True, forcerm=True
+#)
+#new_image_id = new_image.id
+#new_image_tag = new_image.tags
 
-base_im = client.images.get(base_image)
-print(f"Base image: {base_im.id}, {base_im.tag}")
+#print(new_image_id, new_image_tag)
 
-client.images.remove(new_image_name)
-client.images.remove(base_image)
+#base_im = client.images.get(base_image)
+#print(f"Base image: {base_im.id}, {base_im.tag}")
+
+#client.images.remove(new_image_name)
+#client.images.remove(base_image)
 
 
 

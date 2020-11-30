@@ -16,6 +16,7 @@
 # Imports.
 # -----------------------------------------------------------------------------
 from collections import OrderedDict
+import docker
 import json
 import os
 import pathlib
@@ -99,7 +100,6 @@ def _add_field_to_registry(name: str, field_name: str,
         json.dump(reg_data, f)
     
 
-
 # =============================================================================
 # Project folder utilities.
 # -----------------------------------------------------------------------------
@@ -134,6 +134,66 @@ def _get_config_data(name: str) -> Dict:
     with open(config_file, 'r') as f:
         doc = yaml_obj.load(f)
     return doc
+
+
+# =============================================================================
+# Docker image handling utilities.
+# -----------------------------------------------------------------------------
+def _delete_docker_image(name: str, deleting_project=False) -> NoReturn:
+    """
+    Deletes the currently registered image from the local Docker
+    engine. Custom images are not deleted, and built images are only
+    deleted if replacement is set in the configuration file.
+
+    Args:
+        name (str): Project name.
+
+        deleting_project (bool): Set to True to bypass the rebuild checks
+         and delete the image when permanently deleting the project. Default
+         is False which lets the checks happen.
+    """
+    # Get Docker image name.
+    reg_data = _get_registry_data()
+    config_data = _get_config_data(name)
+    if 'docker-image' in reg_data[name].keys():
+        reg_docker_image = reg_data[name]['docker-image']
+    else:
+        reg_docker_image = ''
+    base_docker_image = config_data['base-image']
+
+    if 'docker-image' in config_data.keys():
+        custom_image = config_data['docker-image']
+    else:
+        custom_image = ''
+    
+    delete_existing = False
+    # Check if this is part of removing a project.
+    if deleting_project:
+        if (reg_docker_image != base_docker_image) & (reg_docker_image != custom_image):
+            delete_existing = True
+        else:
+            delete_existing = False
+    else:
+        # Check if image should be deleted: if rebuild is not allowed
+        # or custom image is found.
+        if 'replace-image-on-rebuild' is config_data.keys():
+            delete_existing = config_data['replace-image-on-rebuild']
+        else:
+            delete_existing = False
+        if (custom_image is not None) | (custom_image == reg_docker_image):
+            delete_existing = False
+    
+    # Execute delete if allowed.
+    if delete_existing:
+        client = docker.from_env()
+        im_list = [im[0] for im in client.images.list()]
+        if reg_docker_image in im_list:
+            client.images.remove(reg_docker_image)
+            print(f"{MSG_PREFIX}Deleting existing project image: {delete_existing}")
+        else:
+            print(f"{FAIL_PREFIX}Project image '{reg_docker_image}' not found.")
+    else:
+        print(f"{MSG_PREFIX}Project image '{delete_existing}' was not deleted.")
 
 
 # =============================================================================

@@ -22,7 +22,7 @@ import ruamel.yaml as ryml  # Allows modification of YAML file without disruptin
 import shutil
 from typing import NoReturn, List
 
-from utils import (_get_project_folder, _get_config_data, _add_field_to_registry, _get_registry_data,
+from utils import (_get_project_folder, _get_config_data, _add_field_to_registry, _get_registry_data, _delete_docker_image,
     MSG_PREFIX, APP_DIR_ON_IMAGE)
 
 
@@ -46,8 +46,13 @@ def _get_or_create_dockerfile(name: str) -> NoReturn:
 def _create_dockerfile(name: str) -> NoReturn:
     """
     Creates a new Dockerfile for the project.
+
+    Currently the base image should contain the Python language
+    installation and the Dockerfile creation is used to add
+    files and install Python packages.
     """
     print(f"{MSG_PREFIX}Building Dockerfile from project configuration.")
+    proj_path = _get_project_folder(name)
 
     LEND = "\n"  # Line ender for Dockerfile.
     # List holding the Dockerfile lines in order.
@@ -58,10 +63,6 @@ def _create_dockerfile(name: str) -> NoReturn:
     dockerfile_list.append(f"FROM {_get_base_image_name(name)}{LEND}")
     dockerfile_list.append(f"RUN apt-get update{LEND}")
 
-    # Install Python.
-    python_version = str(_get_config_data(name)['python-version'])
-    dockerfile_list.append(f"RUN apt-get install -y python{python_version}{LEND}")
-
     # Create 'app' folder for application files.
     dockerfile_list.append(f"RUN mkdir -p {APP_DIR_ON_IMAGE}{LEND}")
 
@@ -69,6 +70,14 @@ def _create_dockerfile(name: str) -> NoReturn:
     if len(code_paths) > 0:
         if any([c.endswith('.git') for c in code_paths]):
             dockerfile_list.append(f"RUN apt-get install -y git{LEND}")
+    
+    # Copy 'requirements.txt' file and run.
+    dockerfile_list.append(
+        f"COPY {proj_path}/requirements.txt /{APP_DIR_ON_IMAGE}{LEND}"
+    )
+    dockerfile_list.append(
+        f"RUN pip install -r /{APP_DIR_ON_IMAGE}/requirements.txt"
+    )
 
     # Copy or clone user files.
     if len(code_paths) > 0:
@@ -146,14 +155,20 @@ def _build_docker_image(name: str) -> NoReturn:
     """
     print(f"{MSG_PREFIX}Building Docker image from Dockerfile...")
     dockerfile_path = _get_registry_data()[name]['dockerfile']
+    # Remove existing project image if allowed.
+    _delete_docker_image(name)
     # Remove 'Dockerfile' from the end of the path.
     dockerfile_path = dockerfile_path.rsplit('/', 1)[0]+'/'
-    #client = docker.from_env()
-
-
     image_name = _generate_image_name(name)
+    client = docker.from_env()
+    d_image, logs = client.images.build(
+        path=dockerfile_path,
+        tag=image_name,
+        pull=True,
+        rm=True, forcerm=True
+    )
+
     # Register Docker image.
-    
     print(f"{MSG_PREFIX}Docker image build succeeded: {image_name}")
     _add_field_to_registry(name, 'docker-image', image_name)
 
@@ -202,30 +217,3 @@ def _generate_image_name(name: str) -> str:
     """
     dt_string = datetime.now().strftime("%Y%m%d-%H%M%S")
     return f"{name}_mldeploy:{dt_string}"
-
-
-def _delete_image(name: str, deleting_project=False) -> NoReturn:
-    """
-    Deletes the currently registered image from the local Docker
-    engine. Custom images are not deleted, and built images are only
-    deleted if replacement is set in the configuration file.
-
-    Args:
-        name (str): Project name.
-
-        deleting_project (bool): Set to True to bypass the rebuild checks
-         and delete the image when permanently deleting the project. Default
-         is False which lets the checks happen.
-    """
-    # Check if image should be deleted: if rebuild is not allowed
-    # or custom image is found.
-    config_data = _get_config_data(name)
-    if 'replace-image-on-rebuild' is config_data.keys():
-        delete_existing = config_data['replace-image-on-rebuild']
-    else:
-        delete_existing = False
-    if 'docker-image' in config_data.keys():
-        image_name = config_data['docker-image']
-        if image_name is not None:
-            delete_existing = False
-    print(f"Delete existing image: {delete_existing}")

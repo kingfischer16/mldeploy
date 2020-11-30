@@ -30,6 +30,9 @@ project-name:
 #python-version: 3.8
 
 # 1.2 Base docker image.
+# This image will be used as a base and have files copied to it. If you
+# already have a finished Docker image that you wish to use, specify it
+# in section "3.2. Custom Docker image".
 base-image: python:3.8-slim-buster
 
 
@@ -70,17 +73,17 @@ replace-image-on-rebuild: true
 # 4.1. EC2 instance settings
 # Control the number and size of instances, autoscaling group settings,
 # scaling triggers, and availability.
-# aws-region: eu-north-1
+aws-region: eu-north-1
 
-#availability-zones:
-#  - eu-north-1a
+availability-zones:
+  - eu-north-1a
 #  - eu-north-1c
 
-#use-autoscaling: yes  # yes or no
-#min-instances: 0  # integer
-#target-instances: 0  # integer
-#max-instances: 1  # integer, must be greater than min-instances
-#increase-delay: 10  # seconds, time before instance is added after increase trigger
-#decrease-delay: 300  # seconds, time before instance is removed after decrease trigger
-#max-jobs-per-instance-before-scaleup: 3  # integer, maximum number of jobs allowed (per active instance) in queue before an instance is added, no scaleup trigger set if none provided
-#min-jobs-per-instance-before-scaledown: 1  # intever, minimum number of jobs allowed (per active instance) in queue before an instance is removed, no scaledown trigger set if none provided
+use-autoscaling: yes  # yes or no
+min-instances: 0  # integer
+target-instances: 0  # integer
+max-instances: 1  # integer, must be greater than min-instances
+increase-delay: 10  # seconds, time before instance is added after increase trigger
+decrease-delay: 300  # seconds, time before instance is removed after decrease trigger
+max-jobs-per-instance-before-scaleup: 3  # integer, maximum number of jobs allowed (per active instance) in queue before an instance is added, no scaleup trigger set if none provided
+min-jobs-per-instance-before-scaledown: 1  # intever, minimum number of jobs allowed (per active instance) in queue before an instance is removed, no scaledown trigger set if none provided
