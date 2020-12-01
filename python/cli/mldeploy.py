@@ -24,7 +24,7 @@ from docker_tools import _build_or_get_image
 from cleanup import _delete_project
 from startup import (
     _create_registry_file_if_not_exists, _add_project_to_registry,
-    _create_new_project_folder, _copy_and_update_config, _create_requirements_file
+    _create_new_project_folder, _copy_and_update_config, _create_requirements_file, _copy_dockerignore
 )
 from utils import (
     _get_registry_data, _get_project_folder, _get_registry_lists, _get_appdata_folder,
@@ -97,6 +97,7 @@ def create(name: str = 'mldeploy_project',
         _create_new_project_folder(name)
         print(f"\tProject folder created.")
         _copy_and_update_config(name)
+        _copy_dockerignore(name)
         print(f"\tConfiguration file created.")
         _create_requirements_file(name)
         print(f"{MSG_PREFIX}Successfully created project '{name}' in '{path_dir}'")
