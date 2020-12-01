@@ -22,7 +22,7 @@ import ruamel.yaml as ryml  # Allows modification of YAML file without disruptin
 import shutil
 from typing import NoReturn, List
 
-from utils import (_get_project_folder, _get_config_data, _add_field_to_registry, _get_registry_data, _delete_docker_image,
+from utils import (_get_project_folder, _get_config_data, _add_field_to_registry, _get_registry_data, _delete_docker_image, _temp_copy_local_files, _remove_temp_files,
     MSG_PREFIX, APP_DIR_ON_IMAGE)
 
 
@@ -73,7 +73,7 @@ def _create_dockerfile(name: str) -> NoReturn:
     
     # Copy 'requirements.txt' file and run.
     dockerfile_list.append(
-        f"COPY {proj_path}/requirements.txt /{APP_DIR_ON_IMAGE}{LEND}"
+        f"COPY requirements.txt /{APP_DIR_ON_IMAGE}{LEND}"
     )
     dockerfile_list.append(
         f"RUN pip install -r /{APP_DIR_ON_IMAGE}/requirements.txt"
@@ -83,9 +83,11 @@ def _create_dockerfile(name: str) -> NoReturn:
     if len(code_paths) > 0:
         for code_file in code_paths:
             if code_file.endswith('.git'):
-                dockerfile_list.append(f"RUN git clone {code_file} /{APP_DIR_ON_IMAGE}{LEND}")
+                code_folder = code_file.rsplit('/', 1)[1].rsplit('.', 1)[0]
+                dockerfile_list.append(f"RUN git clone {code_file} ./{APP_DIR_ON_IMAGE}/{code_folder} {LEND}")
             else:
-                dockerfile_list.append(f"COPY {code_file} /{APP_DIR_ON_IMAGE}{LEND}")
+                code_folder = code_file.rsplit('/', 1)[1]
+                dockerfile_list.append(f"COPY /tmp/{code_file.rsplit('/', 1)[1]} ./{APP_DIR_ON_IMAGE}/{code_folder}{LEND}")
     
     with open(_get_project_folder(name)+"/Dockerfile", 'w') as dfile:
         for line in dockerfile_list:
@@ -155,19 +157,23 @@ def _build_docker_image(name: str) -> NoReturn:
     """
     print(f"{MSG_PREFIX}Building Docker image from Dockerfile...")
     dockerfile_path = _get_registry_data()[name]['dockerfile']
+    # Clear temp files if any left from previous or failed build.
+    _remove_temp_files(name)
+    # Temporarily copy files to be transferred.
+    _temp_copy_local_files(name)
     # Remove existing project image if allowed.
     _delete_docker_image(name)
-    # Remove 'Dockerfile' from the end of the path.
-    dockerfile_path = dockerfile_path.rsplit('/', 1)[0]+'/'
     image_name = _generate_image_name(name)
     client = docker.from_env()
     d_image, logs = client.images.build(
-        path=dockerfile_path,
+        path=dockerfile_path.rsplit('/', 1)[0],
+        #fileobj=dockerfile_path,
         tag=image_name,
         pull=True,
         rm=True, forcerm=True
     )
-
+    # Delete temporary files after successful build.
+    _remove_temp_files(name)
     # Register Docker image.
     print(f"{MSG_PREFIX}Docker image build succeeded: {image_name}")
     _add_field_to_registry(name, 'docker-image', image_name)

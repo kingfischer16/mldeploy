@@ -33,9 +33,9 @@ def _delete_project(name: str) -> NoReturn:
     Args:
         name (str): Project name.
     """
-    _delete_project_folder_and_registry(name)
     _delete_docker_image(name, deleting_project=True)
-
+    _delete_project_folder_and_registry(name)
+    
 
 def _delete_project_folder_and_registry(name: str) -> NoReturn:
     """

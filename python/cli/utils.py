@@ -21,6 +21,7 @@ import json
 import os
 import pathlib
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
+import shutil
 import sys
 from typing import NoReturn, List, Union, Dict, Any
 
@@ -158,7 +159,8 @@ def _delete_docker_image(name: str, deleting_project=False) -> NoReturn:
     if 'docker-image' in reg_data[name].keys():
         reg_docker_image = reg_data[name]['docker-image']
     else:
-        reg_docker_image = ''
+        # Exit function if no registered docker image.
+        return
     base_docker_image = config_data['base-image']
 
     if 'docker-image' in config_data.keys():
@@ -176,24 +178,72 @@ def _delete_docker_image(name: str, deleting_project=False) -> NoReturn:
     else:
         # Check if image should be deleted: if rebuild is not allowed
         # or custom image is found.
-        if 'replace-image-on-rebuild' is config_data.keys():
+        if 'replace-image-on-rebuild' in config_data.keys():
             delete_existing = config_data['replace-image-on-rebuild']
         else:
             delete_existing = False
-        if (custom_image is not None) | (custom_image == reg_docker_image):
+        if (len(custom_image) > 0) | (custom_image == reg_docker_image):
             delete_existing = False
     
     # Execute delete if allowed.
     if delete_existing:
         client = docker.from_env()
-        im_list = [im[0] for im in client.images.list()]
+        im_list = [im.tags[0] for im in client.images.list()]
         if reg_docker_image in im_list:
             client.images.remove(reg_docker_image)
-            print(f"{MSG_PREFIX}Deleting existing project image: {delete_existing}")
+            print(f"{MSG_PREFIX}Deleting existing project image: {reg_docker_image}")
         else:
             print(f"{FAIL_PREFIX}Project image '{reg_docker_image}' not found.")
     else:
-        print(f"{MSG_PREFIX}Project image '{delete_existing}' was not deleted.")
+        print(f"{MSG_PREFIX}Project image '{reg_docker_image}' was not deleted.")
+
+
+# =============================================================================
+# File handling utilities.
+# -----------------------------------------------------------------------------
+def _temp_copy_local_files(name: str) -> NoReturn:
+    """
+    Temporarily copies the files (ignores repos to clone) to the
+    project folder /tmp directory. This must be done because the Docker
+    build command uses only the relative path and cannot pull files from
+    local root.
+
+    Args:
+        name (str): Project name.
+    
+    Raises:
+        ValueError: If the object to copy is neither a file nor a directory.
+    """
+    # Get files to copy from the project's config file.
+    conf_data = _get_config_data(name)
+    if 'add-files' in conf_data.keys():
+        if conf_data['add-files'] is not None:
+            local_files = [f for f in conf_data['add-files'] if not f.endswith('.git')]
+            # Project folder gets a tmp folder.
+            dst = _get_project_folder(name)+'/tmp'
+            if not os.path.exists(dst):
+                os.mkdir(dst)
+            for src_i in local_files:
+                # Check if file or folder and copy appropriately.
+                dst_i = dst + '/' + src_i.rsplit('/', 1)[1]
+                if os.path.isdir(src_i):
+                    shutil.copytree(src_i, dst_i)
+                elif os.path.isfile(src_i):
+                    shutil.copy(src_i, dst_i)
+                else:
+                    raise ValueError(f"{FAIL_PREFIX}Unknown object to copy: {src_i}")
+
+
+def _remove_temp_files(name: str) -> NoReturn:
+    """
+    Delete everything in the /tmp folder of the project directory.
+    
+    Args:
+        name (str): Project name.
+    """
+    temp_loc = _get_project_folder(name) + '/tmp'
+    if os.path.exists(temp_loc):
+        shutil.rmtree(temp_loc)
 
 
 # =============================================================================

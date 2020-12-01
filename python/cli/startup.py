@@ -95,6 +95,17 @@ def _create_requirements_file(name: str) -> NoReturn:
                 f.write(module+"\n")
 
 
+def _copy_dockerignore(name: str) -> NoReturn:
+    """
+    Copies the '.dockerignore' file to the project folder.
+
+    Args:
+        name (str): Project name.
+    """
+    di_file = _get_project_folder(name)+'/.dockerignore'
+    shutil.copy(src=CURR_DIR+'/.dockerignore', dst=di_file)
+
+
 def _create_new_project_folder(name: str) -> NoReturn:
     """
     Creates a new project folder.
