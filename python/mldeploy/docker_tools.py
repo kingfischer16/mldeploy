@@ -22,7 +22,7 @@ import ruamel.yaml as ryml  # Allows modification of YAML file without disruptin
 import shutil
 from typing import NoReturn, List
 
-from utils import (_get_project_folder, _get_config_data, _add_field_to_registry, _get_registry_data, _delete_docker_image, _temp_copy_local_files, _remove_temp_files,
+from .utils import (_get_project_folder, _get_config_data, _add_field_to_registry, _get_registry_data, _delete_docker_image, _temp_copy_local_files, _remove_temp_files,
     MSG_PREFIX, APP_DIR_ON_IMAGE)
 
 
@@ -52,7 +52,6 @@ def _create_dockerfile(name: str) -> NoReturn:
     files and install Python packages.
     """
     print(f"{MSG_PREFIX}Building Dockerfile from project configuration.")
-    proj_path = _get_project_folder(name)
 
     LEND = "\n"  # Line ender for Dockerfile.
     # List holding the Dockerfile lines in order.

@@ -19,7 +19,7 @@ import os
 import shutil
 from typing import NoReturn
 
-from utils import (_get_registry_data, _get_registry_path, _get_project_folder,
+from .utils import (_get_registry_data, _get_registry_path, _get_project_folder,
     _delete_docker_image)
 
 

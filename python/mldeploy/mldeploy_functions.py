@@ -1,7 +1,7 @@
 # =============================================================================
 # MLDEPLOY.PY
 # -----------------------------------------------------------------------------
-# The main code file for the CLI.
+# Holds the functions that execute the commands in the CLI.
 # 
 # ***This file MAY import from all other 'mldeploy' files.***
 #  
@@ -20,13 +20,13 @@ import os
 import sys
 from typing import NoReturn, Dict
 
-from docker_tools import _build_or_get_image
-from cleanup import _delete_project
-from startup import (
+from .docker_tools import _build_or_get_image
+from .cleanup import _delete_project
+from .startup import (
     _create_registry_file_if_not_exists, _add_project_to_registry,
     _create_new_project_folder, _copy_and_update_config, _create_requirements_file, _copy_dockerignore
 )
-from utils import (
+from .utils import (
     _get_registry_data, _get_project_folder, _get_registry_lists, _get_appdata_folder,
     CURR_DIR,
     MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX
@@ -43,6 +43,7 @@ def test() -> str:
     Returns:
         (str): A test string.
     """
+    print(os.path.dirname(os.path.realpath(__file__)))
     return f"{MSG_PREFIX}This is a test. MLDeploy has installed successfully."
 
 
@@ -146,12 +147,12 @@ def build(name: str = '') -> NoReturn:
 # =============================================================================
 # Main execution and function dictionary.
 # -----------------------------------------------------------------------------
-if __name__ == '__main__':
-    fire.Fire({
-        'test': test,
-        'cwd': cwd,
-        'ls': ls,
-        'create': create,
-        'delete': delete,
-        'build': build
-    })
+#if __name__ == '__main__':
+#    fire.Fire({
+#        'test': test,
+#        'cwd': cwd,
+#        'ls': ls,
+#        'create': create,
+#        'delete': delete,
+#        'build': build
+#    })
