@@ -29,7 +29,8 @@ from typing import NoReturn, List, Union, Dict, Any
 # =============================================================================
 # Constants.
 # -----------------------------------------------------------------------------
-CURR_DIR = os.getcwd()
+CURR_DIR = str(os.path.dirname(os.path.realpath(__file__)))
+TEMPLATES_FOLDER = CURR_DIR + '/config_templates'
 REG_FILE_NAME = '.registry.json'
 DEFAULT_PROJECT_MODULES = [
     'boto3'

@@ -21,8 +21,10 @@ import ruamel.yaml as ryml  # Allows modification of YAML file without disruptin
 import shutil
 from typing import NoReturn
 
-from .utils import (_get_project_folder, _get_registry_data, _get_registry_path, _get_appdata_folder,
-    CURR_DIR, DEFAULT_PROJECT_MODULES)
+from .utils import (_get_project_folder, _get_registry_data,
+    _get_registry_path, _get_appdata_folder,
+    CURR_DIR, DEFAULT_PROJECT_MODULES
+)
 
 
 # =============================================================================

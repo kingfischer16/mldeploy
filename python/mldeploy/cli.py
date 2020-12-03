@@ -3,11 +3,10 @@
 # -----------------------------------------------------------------------------
 # The execution script function for the packaged CLI.
 # 
-# ***This file MAY import from all other 'mldeploy' files.***
+# ***This file MUST ONLY import from 'mldeply_functions.py'.***
 #  
 # The CLI is built using the following packages:
 #   - fire: Google-supported, turns functions into CLI
-#   - ruamel.yaml: Edit YAML files without affecting the structure or comments.
 # -----------------------------------------------------------------------------
 # Author: kingfischer16 (https://github.com/kingfischer16/mldeploy)
 # =============================================================================
@@ -29,6 +28,9 @@ from .mldeploy_functions import (
 def main() -> NoReturn:
     """
     The main program function to be packaged for command line.
+
+    This function uses python-fire to convert the specified functions
+    into 
     """
     fire.Fire({
         'test': test,
