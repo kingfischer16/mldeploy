@@ -39,6 +39,7 @@ APP_DIR_ON_IMAGE = "app"
 MSG_PREFIX = "\033[1;36;40m MLDeploy Message:: \033[m"
 FAIL_PREFIX = "\033[1;31;40m MLDeploy Failure:: \033[m"
 ACTION_PREFIX = "\033[1;33;40m MLDeploy Action Required:: \033[m"
+PLATFORM = sys.platform
 
 
 # =============================================================================
@@ -51,12 +52,12 @@ def _get_appdata_folder() -> str:
     file.
     """
     user_home = pathlib.Path.home()
-    if sys.platform == "linux":
+    if PLATFORM == "linux":
         appdata_folder = user_home / ".local/share"
-    elif sys.platform == "win32":
+    elif PLATFORM == "win32":
         appdata_folder = user_home / "AppData/Roaming"
     else:
-        raise ValueError(f"Unknown operating system: {sys.platform}")
+        raise ValueError(f"Unknown operating system: {PLATFORM}")
     return str(appdata_folder) + "/mldeploy"
 
 
