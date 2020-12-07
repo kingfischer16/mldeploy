@@ -96,8 +96,7 @@ def _add_field_to_registry(name: str, field_name: str,
     """
     reg_data = _get_registry_data()
     if name not in reg_data.keys():
-        print(f"{FAIL_PREFIX}Project '{name}' not found in registry.")
-        sys.exit()
+        raise ValueError(f"Project '{name}' not found in registry.")
     reg_data[name][field_name] = contents
     with open(_get_registry_path(), 'w') as f:
         json.dump(reg_data, f)
@@ -142,7 +141,7 @@ def _get_config_data(name: str) -> Dict:
 # =============================================================================
 # Docker image handling utilities.
 # -----------------------------------------------------------------------------
-def _delete_docker_image(name: str, deleting_project=False) -> NoReturn:
+def _delete_docker_image(name: str, deleting_project: bool=False) -> NoReturn:
     """
     Deletes the currently registered image from the local Docker
     engine. Custom images are not deleted, and built images are only

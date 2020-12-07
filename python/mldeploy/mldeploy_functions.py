@@ -73,8 +73,7 @@ def ls() -> NoReturn:
     print(f"\n--- (End of list) ---\n")
 
 
-def create(name: str = 'mldeploy_project',
-    path: str = _get_appdata_folder()) -> NoReturn:
+def create(name: str, path: str = _get_appdata_folder()) -> NoReturn:
     """
     Creates a new project, including project folder, configuration file,
     and project registry.
