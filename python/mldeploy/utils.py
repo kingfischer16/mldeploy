@@ -39,6 +39,7 @@ APP_DIR_ON_IMAGE = "app"
 MSG_PREFIX = "\033[1;36;40m MLDeploy Message:: \033[m"
 FAIL_PREFIX = "\033[1;31;40m MLDeploy Failure:: \033[m"
 ACTION_PREFIX = "\033[1;33;40m MLDeploy Action Required:: \033[m"
+PLATFORM = sys.platform
 
 
 # =============================================================================
@@ -51,12 +52,12 @@ def _get_appdata_folder() -> str:
     file.
     """
     user_home = pathlib.Path.home()
-    if sys.platform == "linux":
+    if PLATFORM == "linux":
         appdata_folder = user_home / ".local/share"
-    elif sys.platform == "win32":
+    elif PLATFORM == "win32":
         appdata_folder = user_home / "AppData/Roaming"
     else:
-        raise ValueError(f"Unknown operating system: {sys.platform}")
+        raise ValueError(f"Unknown operating system: {PLATFORM}")
     return str(appdata_folder) + "/mldeploy"
 
 
@@ -95,8 +96,7 @@ def _add_field_to_registry(name: str, field_name: str,
     """
     reg_data = _get_registry_data()
     if name not in reg_data.keys():
-        print(f"{FAIL_PREFIX}Project '{name}' not found in registry.")
-        sys.exit()
+        raise ValueError(f"Project '{name}' not found in registry.")
     reg_data[name][field_name] = contents
     with open(_get_registry_path(), 'w') as f:
         json.dump(reg_data, f)
@@ -141,7 +141,7 @@ def _get_config_data(name: str) -> Dict:
 # =============================================================================
 # Docker image handling utilities.
 # -----------------------------------------------------------------------------
-def _delete_docker_image(name: str, deleting_project=False) -> NoReturn:
+def _delete_docker_image(name: str, deleting_project: bool=False) -> NoReturn:
     """
     Deletes the currently registered image from the local Docker
     engine. Custom images are not deleted, and built images are only
@@ -226,7 +226,7 @@ def _temp_copy_local_files(name: str) -> NoReturn:
                 os.mkdir(dst)
             for src_i in local_files:
                 # Check if file or folder and copy appropriately.
-                dst_i = dst + '/' + src_i.rsplit('/', 1)[1]
+                dst_i = dst + '/' + src_i.rsplit('/', 1)[-1]
                 if os.path.isdir(src_i):
                     shutil.copytree(src_i, dst_i)
                 elif os.path.isfile(src_i):
@@ -262,6 +262,9 @@ def _get_field_if_exists(name: str, field: str) -> str:
     
     Returns:
         (str): The contents of the field, or '(None)'.
+    
+    Raises:
+        ValueError: If the project name is not in the registry.
     """
     reg_data = _get_registry_data()
     if name not in reg_data.keys():
@@ -303,4 +306,3 @@ def _get_registry_lists() -> Dict:
         d_output[k.ljust(d_flen[k])] = d_reg[k]
     
     return d_output
-

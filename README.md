@@ -1,7 +1,8 @@
 # `mldeploy`
-## *Deploy ML code to cloud resources as a REST API for inference and training*
+## Deploy ML to the cloud as a REST API for inference and training
 
-<img src=https://www.python.org/static/community_logos/python-logo-master-v3-TM-flattened.png alt="PythonPowered_Logo" height="50"/> <img src=https://www.docker.com/sites/default/files/d8/2019-07/horizontal-logo-monochromatic-white.png alt="Docker_Logo" height="50"/> <img src=https://d0.awsstatic.com/logos/powered-by-aws.png alt="PoweredByAWS_Logo" height="50"/> <img src=https://restfulapi.net/wp-content/uploads/rest.png alt="PoweredByAWS_Logo" height="50"/>
+<img src="https://img.shields.io/badge/python%20-%2314354C.svg?&style=for-the-badge&logo=python&logoColor=white"/> <img src="https://img.shields.io/badge/docker%20-%230db7ed.svg?&style=for-the-badge&logo=docker&logoColor=white"/> <img src="https://img.shields.io/badge/AWS%20-%23FF9900.svg?&style=for-the-badge&logo=amazon-aws&logoColor=white"/> <img src="https://img.shields.io/badge/{REST:API}%20-%238CC63F.svg?&style=for-the-badge&logo=rest&logoColor=white"/>
+
 ---
 
 `mldeploy` is a Python-based CLI tool for quickly containerizing and deploying your machine learning models to cloud services as a REST API.
