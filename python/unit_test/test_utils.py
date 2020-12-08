@@ -10,6 +10,7 @@
 # =============================================================================
 # Imports.
 # -----------------------------------------------------------------------------
+from collections import OrderedDict
 import io
 import os
 import pathlib
@@ -22,7 +23,7 @@ import utils
 
 
 # =============================================================================
-# Unit tests.
+# Unit tests for Registry utilities.
 # -----------------------------------------------------------------------------
 class TestGetAppDataFolder(TestCase):
     """
@@ -138,6 +139,9 @@ class TestAddFieldToRegistry(TestCase):
         self.assertEqual(exc.__class__, ValueError)
 
 
+# =============================================================================
+# Unit tests for Project folder utilities.
+# -----------------------------------------------------------------------------
 class TestGetProjectFolder(TestCase):
     """
     Test case for 'mldeploy.utils._get_project_folder' function.
@@ -153,6 +157,9 @@ class TestGetProjectFolder(TestCase):
         self.assertEqual(utils._get_project_folder(proj_name), test_location)
     
 
+# =============================================================================
+# Unit tests for Configuration file utilities.
+# -----------------------------------------------------------------------------
 class TestGetConfigData(TestCase):
     """
     Test case for 'mldeploy.utils._get_config_data' function.
@@ -169,6 +176,9 @@ class TestGetConfigData(TestCase):
         self.assertEqual(utils._get_config_data('proj'), test_result)
 
 
+# =============================================================================
+# Unit tests for Docker image handling utilities.
+# -----------------------------------------------------------------------------
 class TestDeleteDockerImage(TestCase):
     """
     Test case for 'mldeploy.utils._delete_docker_image' function.
@@ -404,4 +414,210 @@ class TestDeleteDockerImage(TestCase):
         utils._delete_docker_image(proj_name, deleting_project=del_proj)
         expected_output = f"{utils.MSG_PREFIX}Project image '{reg_im}' was not deleted.\n"
         self.assertEqual(mock_stdout.getvalue(), expected_output)
+
+
+# =============================================================================
+# Unit tests for File handling utilities.
+# -----------------------------------------------------------------------------
+class TestTempCopyLocalFiles(TestCase):
+    """
+    Test case for 'mldeploy.utils._temp_copy_local_files' function.
+    """
+    @mock.patch('utils._get_project_folder')
+    @mock.patch('utils._get_config_data', return_value={})
+    def test_temp_copy_local_files_test_1(self, mock_conf, mock_folder):
+        """
+        Test config:
+            - 'add-files' not in 'conf_data'
+        """
+        result = utils._temp_copy_local_files('proj')
+        self.assertEqual(result, None)
+        self.assertFalse(mock_folder.called)
     
+    @mock.patch('utils._get_project_folder')
+    @mock.patch('utils._get_config_data', return_value={'add-files': None})
+    def test_temp_copy_local_files_test_2(self, mock_conf, mock_folder):
+        """
+        Test config:
+            - 'add-files' in 'conf_data'
+            - 'add_files' value is None
+        """
+        result = utils._temp_copy_local_files('proj')
+        self.assertEqual(result, None)
+        self.assertFalse(mock_folder.called)
+    
+    @mock.patch('utils.os.mkdir')
+    @mock.patch('utils.shutil.copytree')
+    @mock.patch('utils.os.path.isdir', return_value=True)
+    @mock.patch('utils.os.path.exists', return_value=False)
+    @mock.patch('utils._get_project_folder', return_value='/my/proj')
+    @mock.patch('utils._get_config_data')
+    def test_temp_copy_local_files_test_3(self, mock_conf, mock_folder,
+        mock_exists, mock_isdir, mock_copytree, mock_mkdir):
+        """
+        Test config:
+            - 'add-files' in 'conf_data'
+            - 'add-files' has list of files
+            - 'dst' path does not exist
+            - source path is directory
+        """
+        mock_conf.return_value = {'add-files': ['hello.py']}
+        utils._temp_copy_local_files('proj')
+        self.assertTrue(mock_mkdir.called)
+        self.assertTrue(mock_folder.called)
+        self.assertTrue(mock_isdir.called)
+        self.assertTrue(mock_copytree.called)
+    
+    @mock.patch('utils.shutil.copy')
+    @mock.patch('utils.os.path.isfile', return_value=True)
+    @mock.patch('utils.os.mkdir')
+    @mock.patch('utils.shutil.copytree')
+    @mock.patch('utils.os.path.isdir', return_value=False)
+    @mock.patch('utils.os.path.exists', return_value=True)
+    @mock.patch('utils._get_project_folder', return_value='/my/proj')
+    @mock.patch('utils._get_config_data')
+    def test_temp_copy_local_files_test_4(self, mock_conf, mock_folder,
+        mock_exists, mock_isdir, mock_copytree, mock_mkdir, mock_isfile,
+        mock_copy):
+        """
+        Test config:
+            - 'add-files' in 'conf_data'
+            - 'add-files' has list of files
+            - 'dst' path exists
+            - source path is file
+        """
+        mock_conf.return_value = {'add-files': ['hello.py']}
+        utils._temp_copy_local_files('proj')
+        self.assertFalse(mock_mkdir.called)
+        self.assertTrue(mock_folder.called)
+        self.assertTrue(mock_isdir.called)
+        self.assertFalse(mock_copytree.called)
+        self.assertTrue(mock_copy.called)
+    
+    @mock.patch('utils.shutil.copy')
+    @mock.patch('utils.os.path.isfile', return_value=False)
+    @mock.patch('utils.os.mkdir')
+    @mock.patch('utils.shutil.copytree')
+    @mock.patch('utils.os.path.isdir', return_value=False)
+    @mock.patch('utils.os.path.exists', return_value=True)
+    @mock.patch('utils._get_project_folder', return_value='/my/proj')
+    @mock.patch('utils._get_config_data')
+    def test_temp_copy_local_files_test_5(self, mock_conf, mock_folder,
+        mock_exists, mock_isdir, mock_copytree, mock_mkdir, mock_isfile,
+        mock_copy):
+        """
+        Test config:
+            - 'add-files' in 'conf_data'
+            - 'add-files' has list of files
+            - 'dst' path exists
+            - source path is file
+        """
+        mock_conf.return_value = {'add-files': ['hello.py']}
+        with self.assertRaises(ValueError) as cm:
+            utils._temp_copy_local_files('proj')
+        exc = cm.exception
+        self.assertEqual(exc.__class__, ValueError)
+        self.assertFalse(mock_mkdir.called)
+        self.assertTrue(mock_folder.called)
+        self.assertTrue(mock_isdir.called)
+        self.assertFalse(mock_copytree.called)
+        self.assertFalse(mock_copy.called)
+        
+
+class TestRemoveTempFiles(TestCase):
+    """
+    Test case for 'mldeploy.utils._remove_temp_files' function.
+    """
+    @mock.patch('utils._get_project_folder', return_value='/my/proj')
+    @mock.patch('utils.os.path.exists', return_value=False)
+    @mock.patch('utils.shutil.rmtree')
+    def test_remove_temp_files_exists(self, mock_rmtree,
+        mock_exists, mock_folder):
+        """
+        Test config:
+            - path exists
+        """
+        utils._remove_temp_files('proj')
+        self.assertFalse(mock_rmtree.called)
+    
+    @mock.patch('utils._get_project_folder', return_value='/my/proj')
+    @mock.patch('utils.os.path.exists', return_value=True)
+    @mock.patch('utils.shutil.rmtree')
+    def test_remove_temp_files_does_not_exist(self, mock_rmtree,
+        mock_exists, mock_folder):
+        """
+        Test config:
+            - path exists
+        """
+        utils._remove_temp_files('proj')
+        self.assertTrue(mock_rmtree.called)
+    
+
+# =============================================================================
+# Unit tests for Display utilities.
+# -----------------------------------------------------------------------------
+class TestGetFieldIfExists(TestCase):
+    """
+    Test case for 'mldeploy.utils._get_field_if_exists' function.
+    """
+    @mock.patch('utils._get_registry_data', return_value={'proj': {}})
+    def test_get_field_if_exists_does_not_exists(self, mock_data):
+        """
+        Tests that ValueError returned if poject name is not found.
+        """
+        with self.assertRaises(ValueError) as cm:
+            utils._get_field_if_exists('no_proj', 'field')
+        exc = cm.exception
+        self.assertEqual(exc.__class__, ValueError)
+    
+    @mock.patch('utils._get_registry_data',
+                return_value={'proj': {'field': 'contents'}})
+    def test_get_field_if_exists_no_field(self, mock_data):
+        """
+        Tests that ValueError returned if poject name is found but
+        the field is not found.
+        """
+        test_contents = utils._get_field_if_exists('proj', 'no_field')
+        self.assertEqual(test_contents, '(None)')
+    
+    @mock.patch('utils._get_registry_data',
+                return_value={'proj': {'field': 'contents'}})
+    def test_get_field_if_exists_success(self, mock_data):
+        """
+        Tests that ValueError returned if project name and field
+        exist.
+        """
+        test_contents = utils._get_field_if_exists('proj', 'field')
+        self.assertEqual(test_contents, 'contents')
+
+
+class TestGetRegistryLists(TestCase):
+    """
+    Test case for 'mldeploy.utils._get_registry_lists' function.
+    """
+    @mock.patch('utils._get_registry_data',
+                return_value={'proj1': {}, 'proj2': {}})
+    @mock.patch('utils._get_field_if_exists', return_value='example')
+    def test_get_registry_lists(self, mock_field, mock_data):
+        """
+        Tests that the registry contents is output in the
+        expected format.
+        """
+        correct_result = OrderedDict()
+        proj_field = 'Project Name   '
+        folder_field = 'Project Folder   '
+        docker_field = 'Docker Image   '
+        proj_len = len(proj_field)
+        folder_len = len(folder_field)
+        docker_len = len(docker_field)
+        correct_result[proj_field] = [
+            'proj1'.ljust(proj_len), 'proj2'.ljust(proj_len)
+        ]
+        correct_result[folder_field] = [
+            'example'.ljust(folder_len), 'example'.ljust(folder_len)
+        ]
+        correct_result[docker_field] = [
+            'example'.ljust(docker_len), 'example'.ljust(docker_len)
+        ]
+        test_result = utils._get_registry_lists()
+        self.assertEqual(test_result, correct_result)

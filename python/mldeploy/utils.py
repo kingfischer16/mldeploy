@@ -226,7 +226,7 @@ def _temp_copy_local_files(name: str) -> NoReturn:
                 os.mkdir(dst)
             for src_i in local_files:
                 # Check if file or folder and copy appropriately.
-                dst_i = dst + '/' + src_i.rsplit('/', 1)[1]
+                dst_i = dst + '/' + src_i.rsplit('/', 1)[-1]
                 if os.path.isdir(src_i):
                     shutil.copytree(src_i, dst_i)
                 elif os.path.isfile(src_i):
@@ -262,6 +262,9 @@ def _get_field_if_exists(name: str, field: str) -> str:
     
     Returns:
         (str): The contents of the field, or '(None)'.
+    
+    Raises:
+        ValueError: If the project name is not in the registry.
     """
     reg_data = _get_registry_data()
     if name not in reg_data.keys():
@@ -303,4 +306,3 @@ def _get_registry_lists() -> Dict:
         d_output[k.ljust(d_flen[k])] = d_reg[k]
     
     return d_output
-
