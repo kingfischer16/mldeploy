@@ -32,10 +32,15 @@ from typing import NoReturn, List, Union, Dict, Any
 CURR_DIR = str(os.path.dirname(os.path.realpath(__file__)))
 TEMPLATES_FOLDER = CURR_DIR + '/config_templates'
 REG_FILE_NAME = '.registry.json'
+CLOUDFORMATION_FILE_NAME = '.cloudformation.json'
+PROJ_FOLDER_KEY = 'location'
+CLOUDFORMATION_LOCATION_KEY = 'cloudformation_template'
+
 DEFAULT_PROJECT_MODULES = [
     'boto3'
 ]
 APP_DIR_ON_IMAGE = "app"
+
 MSG_PREFIX = "\033[1;36;40m MLDeploy Message:: \033[m"
 FAIL_PREFIX = "\033[1;31;40m MLDeploy Failure:: \033[m"
 ACTION_PREFIX = "\033[1;33;40m MLDeploy Action Required:: \033[m"
@@ -79,6 +84,31 @@ def _get_registry_data() -> Dict:
     except:
         data = {}
     return data
+
+
+def _get_field_if_exists(name: str, field: str) -> str:
+    """
+    Returns the contents of the field if it exists, otherwise returns
+    a string '(None)'
+
+    Args:
+        name (str): Project name.
+
+        field (str): Field name to get.
+    
+    Returns:
+        (str): The contents of the field, or '(None)'.
+    
+    Raises:
+        ValueError: If the project name is not in the registry.
+    """
+    reg_data = _get_registry_data()
+    if name not in reg_data.keys():
+        raise ValueError(f"Project '{name}' not found in registry.")
+    contents = "(None)"
+    if field in reg_data[name].keys():
+        contents = reg_data[name][field]
+    return contents
 
 
 def _add_field_to_registry(name: str, field_name: str,
@@ -250,35 +280,14 @@ def _remove_temp_files(name: str) -> NoReturn:
 # =============================================================================
 # Display utilities.
 # -----------------------------------------------------------------------------
-def _get_field_if_exists(name: str, field: str) -> str:
-    """
-    Returns the contents of the field if it exists, otherwise returns
-    a string '(None)'
-
-    Args:
-        name (str): Project name.
-
-        field (str): Field name to get.
-    
-    Returns:
-        (str): The contents of the field, or '(None)'.
-    
-    Raises:
-        ValueError: If the project name is not in the registry.
-    """
-    reg_data = _get_registry_data()
-    if name not in reg_data.keys():
-        raise ValueError(f"Project '{name}' not found in registry.")
-    contents = "(None)"
-    if field in reg_data[name].keys():
-        contents = reg_data[name][field]
-    return contents
-
-
 def _get_registry_lists() -> Dict:
     """
-    Returns a dictionary with lists of field contents from
-    the registry.
+    Returns the contents of the registry as an ordered dictionary of lists
+    for suited for output in the project listing function.
+
+    Returns:
+        (OrderedDict): A dictionary of lists in the correct order for
+         displaying.
     """
     fnames = {
         'name': 'Project Name',

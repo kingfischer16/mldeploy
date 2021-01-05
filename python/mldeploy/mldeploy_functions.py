@@ -145,3 +145,34 @@ def build(name: str = '') -> NoReturn:
         _build_or_get_image(proj_name)
         print(f"{MSG_PREFIX}Project build successful.")
 
+
+def deploy(name: str = '') -> NoReturn:
+    """
+    Deploys the specified project to cloud resources.
+    
+    Args:
+        name (str): Name of the project to deploy.
+    """
+    proj_name = os.getcwd().rsplit('/', 1)[1] if len(name)<=0 else name
+    registerd_projects = list(_get_registry_data().keys())
+    if proj_name not in registerd_projects:
+        print(f"{FAIL_PREFIX}Project '{proj_name}' does not exist.")
+        sys.exit()
+    else:
+        print(f"{MSG_PREFIX}***PROJECT DEPLOYMENT PLACEHOLDER***")
+
+
+def update(name: str = '') -> NoReturn:
+    """
+    Updates the specified project stack.
+    
+    Args:
+        name (str): Name of the project to update.
+    """
+    proj_name = os.getcwd().rsplit('/', 1)[1] if len(name)<=0 else name
+    registerd_projects = list(_get_registry_data().keys())
+    if proj_name not in registerd_projects:
+        print(f"{FAIL_PREFIX}Project '{proj_name}' does not exist.")
+        sys.exit()
+    else:
+        print(f"{MSG_PREFIX}***PROJECT UPDATE PLACEHOLDER***")
