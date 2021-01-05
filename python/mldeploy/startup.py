@@ -23,7 +23,7 @@ from typing import NoReturn
 
 from .utils import (_get_project_folder, _get_registry_data,
     _get_registry_path, _get_appdata_folder,
-    CURR_DIR, DEFAULT_PROJECT_MODULES
+    CURR_DIR, DEFAULT_PROJECT_MODULES, TEMPLATES_FOLDER
 )
 
 
@@ -73,7 +73,7 @@ def _copy_and_update_config(name: str) -> NoReturn:
     yaml_obj = ryml.YAML()
     project_path = _get_project_folder(name)
     config_file = project_path+'/config.yml'
-    shutil.copy(src=CURR_DIR+'/default_config.yml', dst=config_file)
+    shutil.copy(src=TEMPLATES_FOLDER+'/default_config.yml', dst=config_file)
     with open(config_file, 'r') as f:
         doc = yaml_obj.load(f)
     doc['project-name'] = name
@@ -105,7 +105,7 @@ def _copy_dockerignore(name: str) -> NoReturn:
         name (str): Project name.
     """
     di_file = _get_project_folder(name)+'/.dockerignore'
-    shutil.copy(src=CURR_DIR+'/.dockerignore', dst=di_file)
+    shutil.copy(src=TEMPLATES_FOLDER+'/.dockerignore', dst=di_file)
 
 
 def _create_new_project_folder(name: str) -> NoReturn:

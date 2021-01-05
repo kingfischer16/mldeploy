@@ -17,13 +17,28 @@
 # -----------------------------------------------------------------------------
 import boto3
 from datetime import datetime
-import json
+import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
 import os
 from typing import NoReturn, Dict
 from .utils import (_add_field_to_registry, _get_field_if_exists,
     _add_field_to_registry,
     CLOUDFORMATION_FILE_NAME, CLOUDFORMATION_LOCATION_KEY, PROJ_FOLDER_KEY)
 
+
+# =============================================================================
+# CloudFormation template creation function, top level.
+# -----------------------------------------------------------------------------
+def _add_cloudformation_template(name: str) -> NoReturn:
+    """
+    Adds the CloudFormation template to the configuration folder.
+
+    This function should be called during the build phase.
+
+    Args:
+        name (str): Name of the project to create the cloudformation file.
+    """
+    _create_cloudformation_file(name)
+    _add_project_s3_bucket(name)
 
 # =============================================================================
 # Architecture setup.
@@ -49,8 +64,9 @@ def _create_cloudformation_file(name: str) -> NoReturn:
         'AWSTemplateFormatVersion' : template_version,
         'Description': template_desc
     }
+    yaml_obj = ryml.YAML()
     with open(cf_filename, 'w') as f:
-        json.dump(file_contents, f)
+        yaml_obj.dump(file_contents, f)
     # Register the CloudFormation template file in the registry.
     _add_field_to_registry(name, CLOUDFORMATION_LOCATION_KEY, cf_filename)
     # Register a project hash, for ensuring
@@ -114,8 +130,9 @@ def _get_cloudformation_template_data(name: str) -> Dict:
         raise FileNotFoundError(f"No CloudFormation template registered for project '{name}'.")
     if not os.path.exists(cf_filepath):
         raise FileNotFoundError(f"Registered CloudFormation tempalate for project '{name}' cannot be found at it's registered location: {cf_filepath}")
+    yaml_obj = ryml.YAML()
     with open(cf_filepath, 'r') as f:
-        data = json.load(f)
+        data = yaml_obj.load(f)
     return data
 
 def _update_cloudformation_template_data(name: str, data: Dict) -> NoReturn:
@@ -135,5 +152,7 @@ def _update_cloudformation_template_data(name: str, data: Dict) -> NoReturn:
         data (dict): The data dictionary to use to update the template.
     """
     cf_filepath = _get_field_if_exists(name, CLOUDFORMATION_LOCATION_KEY)
+    yaml_obj = ryml.YAML()
     with open(cf_filepath, 'w') as f:
-        json.dump(data, f)
+        yaml_obj.dump(data, f)
+

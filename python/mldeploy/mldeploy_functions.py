@@ -33,6 +33,7 @@ from .utils import (
     CURR_DIR,
     MSG_PREFIX, FAIL_PREFIX, ACTION_PREFIX
 )
+from .aws import _add_cloudformation_template
 
 
 # =============================================================================
@@ -143,6 +144,7 @@ def build(name: str = '') -> NoReturn:
         sys.exit()
     else:
         _build_or_get_image(proj_name)
+        _add_cloudformation_template(proj_name)
         print(f"{MSG_PREFIX}Project build successful.")
 
 
