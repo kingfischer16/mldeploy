@@ -32,7 +32,7 @@ from typing import NoReturn, List, Union, Dict, Any
 CURR_DIR = str(os.path.dirname(os.path.realpath(__file__)))
 TEMPLATES_FOLDER = CURR_DIR + '/config_templates'
 REG_FILE_NAME = '.registry.json'
-CLOUDFORMATION_FILE_NAME = '.cloudformation.json'
+CLOUDFORMATION_FILE_NAME = '.cloudformation.yml'
 PROJ_FOLDER_KEY = 'location'
 CLOUDFORMATION_LOCATION_KEY = 'cloudformation_template'
 
@@ -219,7 +219,7 @@ def _delete_docker_image(name: str, deleting_project: bool=False) -> NoReturn:
     # Execute delete if allowed.
     if delete_existing:
         client = docker.from_env()
-        im_list = [im.tags[0] for im in client.images.list()]
+        im_list = [im.tags[0] for im in client.images.list() if len(im.tags)>0]
         if reg_docker_image in im_list:
             client.images.remove(reg_docker_image)
             print(f"{MSG_PREFIX}Deleting existing project image: {reg_docker_image}")
