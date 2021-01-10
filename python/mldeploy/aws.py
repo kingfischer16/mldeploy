@@ -110,12 +110,26 @@ def _add_project_s3_bucket(name: str) -> NoReturn:
     Args:
         name (str): Name of the project for which to create the bucket.
     """
-    # Read JSON file.
     cf_data = _get_cloudformation_template_data(name)
     cf_data["Resources"][f"{S3_STORE_PREF}{name}"] = {
         "Type": "AWS::S3::Bucket",
         "Properties": {
             "BucketName": f"{name}_store_{_get_field_if_exists(name, SALT_KEY)}"
+        },
+    }
+    _update_cloudformation_template_data(name, cf_data)
+
+
+def _add_ec2_instance(name: str) -> NoReturn:
+    """
+    Sample function. Adds EC2 instance.
+    """
+    cf_data = _get_cloudformation_template_data(name)
+    cf_data["Resources"][f"EC2_{name}_01"] = {
+        "Type": "AWS::EC2::Instance",
+        "Properties": {
+            "InstanceType": "t2.micro",
+            "ImageId": "aws-linux-2-ami-id",
         },
     }
     _update_cloudformation_template_data(name, cf_data)
@@ -176,3 +190,16 @@ def _update_cloudformation_template_data(name: str, data: Dict) -> NoReturn:
     yaml_obj = ryml.YAML()
     with open(cf_filepath, "w") as f:
         yaml_obj.dump(data, f)
+
+
+# =============================================================================
+# Deployment control.
+# -----------------------------------------------------------------------------
+def _deploy_stack(name: str) -> NoReturn:
+    """
+    Deploys the stack to AWS for the given project using CloudFormation.
+
+    Args:
+        name (str): The project name.
+    """
+    client = boto3.client("cloudformation")

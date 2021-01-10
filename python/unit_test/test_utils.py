@@ -140,6 +140,31 @@ class TestAddFieldToRegistry(TestCase):
         self.assertEqual(exc.__class__, ValueError)
 
 
+class TestAddSalt(TestCase):
+    """
+    Test case for 'mldeploy.utils._add_salt'.
+    """
+
+    def test_add_salt_uniqueness(self):
+        """
+        Tests that the salt function can repeatedly produce
+        unique salt strings.
+        """
+        total = 100
+        salt_list = [utils._add_salt() for i in range(total)]
+        salt_set = set(salt_list)
+        self.assertEqual(len(salt_set), total)
+
+    def test_add_salt_custom_length(self):
+        """
+        Tests that a salt string can be created at a specified
+        length.
+        """
+        length = 15
+        salt = utils._add_salt(length)
+        self.assertEqual(len(salt), length)
+
+
 # =============================================================================
 # Unit tests for Project folder utilities.
 # -----------------------------------------------------------------------------
