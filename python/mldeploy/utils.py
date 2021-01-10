@@ -2,10 +2,10 @@
 # UTILS.PY
 # -----------------------------------------------------------------------------
 # Common functions used by other files.
-# 
+#
 # ***This file MUST NOT import from other 'mldeploy' files.***
-# 
-#  
+#
+#
 # The CLI is built using the following packages:
 #   - ruamel.yaml: Edit YAML files without affecting the structure or comments.
 # -----------------------------------------------------------------------------
@@ -30,15 +30,13 @@ from typing import NoReturn, List, Union, Dict, Any
 # Constants.
 # -----------------------------------------------------------------------------
 CURR_DIR = str(os.path.dirname(os.path.realpath(__file__)))
-TEMPLATES_FOLDER = CURR_DIR + '/config_templates'
-REG_FILE_NAME = '.registry.json'
-CLOUDFORMATION_FILE_NAME = '.cloudformation.yml'
-PROJ_FOLDER_KEY = 'location'
-CLOUDFORMATION_LOCATION_KEY = 'cloudformation_template'
+TEMPLATES_FOLDER = CURR_DIR + "/config_templates"
+REG_FILE_NAME = ".registry.json"
+CLOUDFORMATION_FILE_NAME = ".cloudformation.yml"
+PROJ_FOLDER_KEY = "location"
+CLOUDFORMATION_LOCATION_KEY = "cloudformation_template"
 
-DEFAULT_PROJECT_MODULES = [
-    'boto3'
-]
+DEFAULT_PROJECT_MODULES = ["boto3"]
 APP_DIR_ON_IMAGE = "app"
 
 MSG_PREFIX = "\033[1;36;40m MLDeploy Message:: \033[m"
@@ -71,7 +69,7 @@ def _get_registry_path() -> str:
     Returns the full file path of the 'mldeploy' registry file.
     """
     appdata_folder = _get_appdata_folder()
-    return appdata_folder+'/'+REG_FILE_NAME
+    return appdata_folder + "/" + REG_FILE_NAME
 
 
 def _get_registry_data() -> Dict:
@@ -79,7 +77,7 @@ def _get_registry_data() -> Dict:
     Returns the registry data as a Python dictionary.
     """
     try:
-        with open(_get_registry_path(), 'r') as f:
+        with open(_get_registry_path(), "r") as f:
             data = json.load(f)
     except:
         data = {}
@@ -95,10 +93,10 @@ def _get_field_if_exists(name: str, field: str) -> str:
         name (str): Project name.
 
         field (str): Field name to get.
-    
+
     Returns:
         (str): The contents of the field, or '(None)'.
-    
+
     Raises:
         ValueError: If the project name is not in the registry.
     """
@@ -111,8 +109,7 @@ def _get_field_if_exists(name: str, field: str) -> str:
     return contents
 
 
-def _add_field_to_registry(name: str, field_name: str,
-    contents: str) -> NoReturn:
+def _add_field_to_registry(name: str, field_name: str, contents: str) -> NoReturn:
     """
     Adds or updates a field to the '.registry.json' file for
     the specified project.
@@ -128,9 +125,9 @@ def _add_field_to_registry(name: str, field_name: str,
     if name not in reg_data.keys():
         raise ValueError(f"Project '{name}' not found in registry.")
     reg_data[name][field_name] = contents
-    with open(_get_registry_path(), 'w') as f:
+    with open(_get_registry_path(), "w") as f:
         json.dump(reg_data, f)
-    
+
 
 # =============================================================================
 # Project folder utilities.
@@ -143,7 +140,7 @@ def _get_project_folder(name: str) -> str:
         name (str): The name of the project.
     """
     reg_data = _get_registry_data()
-    return reg_data[name]['location']
+    return reg_data[name]["location"]
 
 
 # =============================================================================
@@ -156,14 +153,14 @@ def _get_config_data(name: str) -> Dict:
 
     Args:
         name (str): Project name.
-    
+
     Returns:
         (dict): Contents of 'config.yml'.
     """
     yaml_obj = ryml.YAML()
     project_path = _get_project_folder(name)
-    config_file = project_path+'/config.yml'
-    with open(config_file, 'r') as f:
+    config_file = project_path + "/config.yml"
+    with open(config_file, "r") as f:
         doc = yaml_obj.load(f)
     return doc
 
@@ -171,7 +168,7 @@ def _get_config_data(name: str) -> Dict:
 # =============================================================================
 # Docker image handling utilities.
 # -----------------------------------------------------------------------------
-def _delete_docker_image(name: str, deleting_project: bool=False) -> NoReturn:
+def _delete_docker_image(name: str, deleting_project: bool = False) -> NoReturn:
     """
     Deletes the currently registered image from the local Docker
     engine. Custom images are not deleted, and built images are only
@@ -187,18 +184,18 @@ def _delete_docker_image(name: str, deleting_project: bool=False) -> NoReturn:
     # Get Docker image name.
     reg_data = _get_registry_data()
     config_data = _get_config_data(name)
-    if 'docker-image' in reg_data[name].keys():
-        reg_docker_image = reg_data[name]['docker-image']
+    if "docker-image" in reg_data[name].keys():
+        reg_docker_image = reg_data[name]["docker-image"]
     else:
         # Exit function if no registered docker image.
         return
-    base_docker_image = config_data['base-image']
+    base_docker_image = config_data["base-image"]
 
-    if 'docker-image' in config_data.keys():
-        custom_image = config_data['docker-image']
+    if "docker-image" in config_data.keys():
+        custom_image = config_data["docker-image"]
     else:
-        custom_image = ''
-    
+        custom_image = ""
+
     delete_existing = False
     # Check if this is part of removing a project.
     if deleting_project:
@@ -209,17 +206,17 @@ def _delete_docker_image(name: str, deleting_project: bool=False) -> NoReturn:
     else:
         # Check if image should be deleted: if rebuild is not allowed
         # or custom image is found.
-        if 'replace-image-on-rebuild' in config_data.keys():
-            delete_existing = config_data['replace-image-on-rebuild']
+        if "replace-image-on-rebuild" in config_data.keys():
+            delete_existing = config_data["replace-image-on-rebuild"]
         else:
             delete_existing = False
         if (len(custom_image) > 0) | (custom_image == reg_docker_image):
             delete_existing = False
-    
+
     # Execute delete if allowed.
     if delete_existing:
         client = docker.from_env()
-        im_list = [im.tags[0] for im in client.images.list() if len(im.tags)>0]
+        im_list = [im.tags[0] for im in client.images.list() if len(im.tags) > 0]
         if reg_docker_image in im_list:
             client.images.remove(reg_docker_image)
             print(f"{MSG_PREFIX}Deleting existing project image: {reg_docker_image}")
@@ -241,22 +238,22 @@ def _temp_copy_local_files(name: str) -> NoReturn:
 
     Args:
         name (str): Project name.
-    
+
     Raises:
         ValueError: If the object to copy is neither a file nor a directory.
     """
     # Get files to copy from the project's config file.
     conf_data = _get_config_data(name)
-    if 'add-files' in conf_data.keys():
-        if conf_data['add-files'] is not None:
-            local_files = [f for f in conf_data['add-files'] if not f.endswith('.git')]
+    if "add-files" in conf_data.keys():
+        if conf_data["add-files"] is not None:
+            local_files = [f for f in conf_data["add-files"] if not f.endswith(".git")]
             # Project folder gets a tmp folder.
-            dst = _get_project_folder(name)+'/tmp'
+            dst = _get_project_folder(name) + "/tmp"
             if not os.path.exists(dst):
                 os.mkdir(dst)
             for src_i in local_files:
                 # Check if file or folder and copy appropriately.
-                dst_i = dst + '/' + src_i.rsplit('/', 1)[-1]
+                dst_i = dst + "/" + src_i.rsplit("/", 1)[-1]
                 if os.path.isdir(src_i):
                     shutil.copytree(src_i, dst_i)
                 elif os.path.isfile(src_i):
@@ -268,11 +265,11 @@ def _temp_copy_local_files(name: str) -> NoReturn:
 def _remove_temp_files(name: str) -> NoReturn:
     """
     Delete everything in the /tmp folder of the project directory.
-    
+
     Args:
         name (str): Project name.
     """
-    temp_loc = _get_project_folder(name) + '/tmp'
+    temp_loc = _get_project_folder(name) + "/tmp"
     if os.path.exists(temp_loc):
         shutil.rmtree(temp_loc)
 
@@ -290,28 +287,28 @@ def _get_registry_lists() -> Dict:
          displaying.
     """
     fnames = {
-        'name': 'Project Name',
-        'folder': 'Project Folder',
-        'image': 'Docker Image'
+        "name": "Project Name",
+        "folder": "Project Folder",
+        "image": "Docker Image",
     }
     d_reg = OrderedDict()
-    d_reg[fnames['name']] = []
-    d_reg[fnames['folder']] = []
-    d_reg[fnames['image']] = []
-    
+    d_reg[fnames["name"]] = []
+    d_reg[fnames["folder"]] = []
+    d_reg[fnames["image"]] = []
+
     # Build project field list.
     project_names = list(_get_registry_data().keys())
     for pname in project_names:
-        d_reg[fnames['name']].append(pname)
-        d_reg[fnames['folder']].append(_get_field_if_exists(pname, 'location'))
-        d_reg[fnames['image']].append(_get_field_if_exists(pname, 'docker-image'))
-    
+        d_reg[fnames["name"]].append(pname)
+        d_reg[fnames["folder"]].append(_get_field_if_exists(pname, "location"))
+        d_reg[fnames["image"]].append(_get_field_if_exists(pname, "docker-image"))
+
     # Pad strings.
-    d_flen = { k:0 for k in d_reg.keys()}
+    d_flen = {k: 0 for k in d_reg.keys()}
     d_output = OrderedDict()
     for k in d_reg.keys():
-        d_flen[k] = max([len(s) for s in [k]+d_reg[k]]) + 3
+        d_flen[k] = max([len(s) for s in [k] + d_reg[k]]) + 3
         d_reg[k] = [s.ljust(d_flen[k]) for s in d_reg[k]]
         d_output[k.ljust(d_flen[k])] = d_reg[k]
-    
+
     return d_output
