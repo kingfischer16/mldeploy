@@ -18,11 +18,6 @@ The tool can setup project folders with configuration files and registry, create
 
 ---
 
-## Development tools
-`mldeploy` makes use of the following Python packages for development:
- - [`black`](https://black.readthedocs.io/en/stable/): The uncompromising Python code formatter.
-
----
 #### Disclaimer
 The code within this repository is provided as is, for use as dictated by the LICENSE file. Any charges incurred from cloud resources as a result of deploying code is soley the responsibility of the end user. Please be responsible and monitor your resource usage to avoid unwanted or excessive charges.
  

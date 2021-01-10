@@ -20,8 +20,10 @@ import docker
 import json
 import os
 import pathlib
+import random
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
 import shutil
+import string
 import sys
 from typing import NoReturn, List, Union, Dict, Any
 
@@ -33,8 +35,12 @@ CURR_DIR = str(os.path.dirname(os.path.realpath(__file__)))
 TEMPLATES_FOLDER = CURR_DIR + "/config_templates"
 REG_FILE_NAME = ".registry.json"
 CLOUDFORMATION_FILE_NAME = ".cloudformation.yml"
+
+S3_STORE_PREF = "mldeploy_store_"
+
 PROJ_FOLDER_KEY = "location"
 CLOUDFORMATION_LOCATION_KEY = "cloudformation_template"
+SALT_KEY = "salt"
 
 DEFAULT_PROJECT_MODULES = ["boto3"]
 APP_DIR_ON_IMAGE = "app"
@@ -42,6 +48,7 @@ APP_DIR_ON_IMAGE = "app"
 MSG_PREFIX = "\033[1;36;40m MLDeploy Message:: \033[m"
 FAIL_PREFIX = "\033[1;31;40m MLDeploy Failure:: \033[m"
 ACTION_PREFIX = "\033[1;33;40m MLDeploy Action Required:: \033[m"
+
 PLATFORM = sys.platform
 
 
@@ -86,8 +93,8 @@ def _get_registry_data() -> Dict:
 
 def _get_field_if_exists(name: str, field: str) -> str:
     """
-    Returns the contents of the field if it exists, otherwise returns
-    a string '(None)'
+    Returns the contents of the field from the registry if
+    it exists, otherwise returns a string '(None)'
 
     Args:
         name (str): Project name.
@@ -129,6 +136,22 @@ def _add_field_to_registry(name: str, field_name: str, contents: str) -> NoRetur
         json.dump(reg_data, f)
 
 
+def _add_salt(length: int = 4) -> str:
+    """
+    Creates a short, random alphanumeric string to ensure
+    names used are unique.
+
+    Args:
+        length (int): Character length for the salt. Default is 4.
+
+    Returns:
+        (str): The random alphanumeric string.
+    """
+    choose_from = string.ascii_letters + string.digits
+    salt_str = "".join([random.choice(choose_from) for i in range(length)])
+    return salt_str
+
+
 # =============================================================================
 # Project folder utilities.
 # -----------------------------------------------------------------------------
@@ -138,6 +161,9 @@ def _get_project_folder(name: str) -> str:
 
     Args:
         name (str): The name of the project.
+
+    Returns:
+        (str): The path of the project folder.
     """
     reg_data = _get_registry_data()
     return reg_data[name]["location"]

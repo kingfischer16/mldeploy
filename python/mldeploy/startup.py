@@ -22,6 +22,7 @@ import shutil
 from typing import NoReturn
 
 from .utils import (
+    _add_salt,
     _get_project_folder,
     _get_registry_data,
     _get_registry_path,
@@ -29,6 +30,8 @@ from .utils import (
     CURR_DIR,
     DEFAULT_PROJECT_MODULES,
     TEMPLATES_FOLDER,
+    PROJ_FOLDER_KEY,
+    SALT_KEY,
 )
 
 
@@ -55,6 +58,8 @@ def _create_registry_file_if_not_exists() -> NoReturn:
 def _add_project_to_registry(project_path: str) -> NoReturn:
     """
     Adds a new project entry to the registry file.
+    Also adds the location of the project folder and a salt string to the
+    project register.
 
     Args:
         project_path (str): The path (including folder name) where
@@ -62,7 +67,9 @@ def _add_project_to_registry(project_path: str) -> NoReturn:
     """
     project_name = project_path.rsplit("/", 1)[1]
     data = _get_registry_data()
-    data.update({f"{project_name}": {"location": project_path}})
+    data.update(
+        {f"{project_name}": {PROJ_FOLDER_KEY: project_path, SALT_KEY: _add_salt(8)}}
+    )
     with open(_get_registry_path(), "w") as f:
         json.dump(data, f)
 

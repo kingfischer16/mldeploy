@@ -24,9 +24,12 @@ from .utils import (
     _add_field_to_registry,
     _get_field_if_exists,
     _add_field_to_registry,
+    _add_salt,
     CLOUDFORMATION_FILE_NAME,
     CLOUDFORMATION_LOCATION_KEY,
     PROJ_FOLDER_KEY,
+    SALT_KEY,
+    S3_STORE_PREF,
 )
 
 
@@ -71,6 +74,10 @@ def _create_cloudformation_file(name: str) -> NoReturn:
     file_contents = {
         "AWSTemplateFormatVersion": template_version,
         "Description": template_desc,
+        "Resources": {},
+        "Parameters": {},
+        "Mappings": {},
+        "Metadata": {},
     }
     yaml_obj = ryml.YAML()
     with open(cf_filename, "w") as f:
@@ -105,7 +112,12 @@ def _add_project_s3_bucket(name: str) -> NoReturn:
     """
     # Read JSON file.
     cf_data = _get_cloudformation_template_data(name)
-    cf_data["Resources"] = {f"mldeploy_store_{name}": {"Type": "AWS::S3::Bucket"}}
+    cf_data["Resources"][f"{S3_STORE_PREF}{name}"] = {
+        "Type": "AWS::S3::Bucket",
+        "Properties": {
+            "BucketName": f"{name}_store_{_get_field_if_exists(name, SALT_KEY)}"
+        },
+    }
     _update_cloudformation_template_data(name, cf_data)
 
 
