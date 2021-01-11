@@ -20,6 +20,7 @@ import os
 import sys
 from typing import NoReturn, Dict
 
+from .aws import _deploy_stack
 from .docker_tools import _build_or_get_image
 from .cleanup import _delete_project
 from .startup import (
@@ -178,7 +179,8 @@ def deploy(name: str = "") -> NoReturn:
         print(f"{FAIL_PREFIX}Project '{proj_name}' does not exist.")
         sys.exit()
     else:
-        print(f"{MSG_PREFIX}***PROJECT DEPLOYMENT PLACEHOLDER***")
+        print(f"{MSG_PREFIX}***PROJECT DEPLOYING***")
+        _deploy_stack(name)
 
 
 def update(name: str = "") -> NoReturn:

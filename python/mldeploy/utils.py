@@ -36,11 +36,12 @@ TEMPLATES_FOLDER = CURR_DIR + "/config_templates"
 REG_FILE_NAME = ".registry.json"
 CLOUDFORMATION_FILE_NAME = ".cloudformation.yml"
 
-S3_STORE_PREF = "mldeploy_store_"
+S3_STORE_PREF = "mldeployStore"
 
 PROJ_FOLDER_KEY = "location"
 CLOUDFORMATION_LOCATION_KEY = "cloudformation_template"
 SALT_KEY = "salt"
+STACK_NAME_KEY = "stack_name"
 
 DEFAULT_PROJECT_MODULES = ["boto3"]
 APP_DIR_ON_IMAGE = "app"
@@ -149,7 +150,7 @@ def _add_salt(length: int = 4) -> str:
     """
     choose_from = string.ascii_letters + string.digits
     salt_str = "".join([random.choice(choose_from) for i in range(length)])
-    return salt_str
+    return salt_str.lower()
 
 
 # =============================================================================
