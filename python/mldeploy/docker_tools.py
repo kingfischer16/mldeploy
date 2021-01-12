@@ -30,8 +30,7 @@ from .utils import (
     _delete_docker_image,
     _temp_copy_local_files,
     _remove_temp_files,
-    MSG_PREFIX,
-    APP_DIR_ON_IMAGE,
+    _get_constant,
 )
 
 
@@ -60,7 +59,9 @@ def _create_dockerfile(name: str) -> NoReturn:
     installation and the Dockerfile creation is used to add
     files and install Python packages.
     """
-    print(f"{MSG_PREFIX}Building Dockerfile from project configuration.")
+    print(
+        f"{_get_constant('MSG_PREFIX')}Building Dockerfile from project configuration."
+    )
 
     LEND = "\n"  # Line ender for Dockerfile.
     # List holding the Dockerfile lines in order.
@@ -72,7 +73,7 @@ def _create_dockerfile(name: str) -> NoReturn:
     dockerfile_list.append(f"RUN apt-get update{LEND}")
 
     # Create 'app' folder for application files.
-    dockerfile_list.append(f"RUN mkdir -p {APP_DIR_ON_IMAGE}{LEND}")
+    dockerfile_list.append(f"RUN mkdir -p {_get_constant('APP_DIR_ON_IMAGE')}{LEND}")
 
     # Install Git only if needed.
     if len(code_paths) > 0:
@@ -80,8 +81,12 @@ def _create_dockerfile(name: str) -> NoReturn:
             dockerfile_list.append(f"RUN apt-get install -y git{LEND}")
 
     # Copy 'requirements.txt' file and run.
-    dockerfile_list.append(f"COPY requirements.txt /{APP_DIR_ON_IMAGE}{LEND}")
-    dockerfile_list.append(f"RUN pip install -r /{APP_DIR_ON_IMAGE}/requirements.txt")
+    dockerfile_list.append(
+        f"COPY requirements.txt /{_get_constant('APP_DIR_ON_IMAGE')}{LEND}"
+    )
+    dockerfile_list.append(
+        f"RUN pip install -r /{_get_constant('APP_DIR_ON_IMAGE')}/requirements.txt"
+    )
 
     # Copy or clone user files.
     if len(code_paths) > 0:
@@ -89,12 +94,12 @@ def _create_dockerfile(name: str) -> NoReturn:
             if code_file.endswith(".git"):
                 code_folder = code_file.rsplit("/", 1)[1].rsplit(".", 1)[0]
                 dockerfile_list.append(
-                    f"RUN git clone {code_file} ./{APP_DIR_ON_IMAGE}/{code_folder} {LEND}"
+                    f"RUN git clone {code_file} ./{_get_constant('APP_DIR_ON_IMAGE')}/{code_folder} {LEND}"
                 )
             else:
                 code_folder = code_file.rsplit("/", 1)[1]
                 dockerfile_list.append(
-                    f"COPY /tmp/{code_file.rsplit('/', 1)[1]} ./{APP_DIR_ON_IMAGE}/{code_folder}{LEND}"
+                    f"COPY /tmp/{code_file.rsplit('/', 1)[1]} ./{_get_constant('APP_DIR_ON_IMAGE')}/{code_folder}{LEND}"
                 )
 
     with open(_get_project_folder(name) + "/Dockerfile", "w") as dfile:
@@ -131,7 +136,9 @@ def _get_custom_dockerfile(name: str) -> bool:
         return False
 
     # Copy Dockerfile to project folder.
-    print(f"{MSG_PREFIX}Copying user-defined Dockerfile to project folder.")
+    print(
+        f"{_get_constant('MSG_PREFIX')}Copying user-defined Dockerfile to project folder."
+    )
     proj_folder = _get_project_folder(name)
     shutil.copy(src=docker_file_loc, dst=proj_folder + "/Dockerfile")
 
@@ -155,7 +162,9 @@ def _build_or_get_image(name: str) -> NoReturn:
         image_name = conf_data["docker-image"]
         if image_name is not None:
             # Register Docker image.
-            print(f"{MSG_PREFIX}Using user-defined Docker image: {image_name}")
+            print(
+                f"{_get_constant('MSG_PREFIX')}Using user-defined Docker image: {image_name}"
+            )
             _add_field_to_registry(name, "docker-image", image_name)
             return
     _get_or_create_dockerfile(name)
@@ -167,7 +176,7 @@ def _build_docker_image(name: str) -> NoReturn:
     Build the docker image from the information in the project
     folder.
     """
-    print(f"{MSG_PREFIX}Building Docker image from Dockerfile...")
+    print(f"{_get_constant('MSG_PREFIX')}Building Docker image from Dockerfile...")
     dockerfile_path = _get_registry_data()[name]["dockerfile"]
     # Clear temp files if any left from previous or failed build.
     _remove_temp_files(name)
@@ -188,8 +197,10 @@ def _build_docker_image(name: str) -> NoReturn:
     # Delete temporary files after successful build.
     _remove_temp_files(name)
     # Register Docker image.
-    print(f"{MSG_PREFIX}Docker image build succeeded: {image_name}")
+    print(f"{_get_constant('MSG_PREFIX')}Docker image build succeeded: {image_name}")
     _add_field_to_registry(name, "docker-image", image_name)
+    for l in logs:
+        print(l)
 
 
 # =============================================================================

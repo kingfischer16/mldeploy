@@ -29,28 +29,48 @@ from typing import NoReturn, List, Union, Dict, Any
 
 
 # =============================================================================
-# Constants.
+# Constant getter.
 # -----------------------------------------------------------------------------
-CURR_DIR = str(os.path.dirname(os.path.realpath(__file__)))
-TEMPLATES_FOLDER = CURR_DIR + "/config_templates"
-REG_FILE_NAME = ".registry.json"
-CLOUDFORMATION_FILE_NAME = ".cloudformation.yml"
+def _get_constant(key: str) -> Union[str, list]:
+    """
+    Returns a string value for a constant used elsewhere in
+    the code. All constants are defined here.
 
-S3_STORE_PREF = "mldeployStore"
+    Args:
+        key (str): Key for the constant.
 
-PROJ_FOLDER_KEY = "location"
-CLOUDFORMATION_LOCATION_KEY = "cloudformation_template"
-SALT_KEY = "salt"
-STACK_NAME_KEY = "stack_name"
-
-DEFAULT_PROJECT_MODULES = ["boto3"]
-APP_DIR_ON_IMAGE = "app"
-
-MSG_PREFIX = "\033[1;36;40m MLDeploy Message:: \033[m"
-FAIL_PREFIX = "\033[1;31;40m MLDeploy Failure:: \033[m"
-ACTION_PREFIX = "\033[1;33;40m MLDeploy Action Required:: \033[m"
-
-PLATFORM = sys.platform
+    Returns:
+        (str, list): The constant.
+    """
+    d_constants = {
+        # Files, folders, OS.
+        "CURR_DIR": str(os.path.dirname(os.path.realpath(__file__))),
+        "TEMPLATES_FOLDER": str(os.path.dirname(os.path.realpath(__file__)))
+        + "/config_templates",
+        "PLATFORM": sys.platform,
+        "REG_FILE_NAME": ".registry.json",
+        "CLOUDFORMATION_FILE_NAME": ".cloudformation.yml",
+        # AWS prefix names.
+        "S3_STORE_PREF": "mldeployStore",
+        # Registry key names.
+        "CLOUDFORMATION_LOCATION_KEY": "cloudformation_template",
+        "DEPLOY_STATUS_KEY": "deployment_status",
+        "PROJ_FOLDER_KEY": "location",
+        "SALT_KEY": "salt",
+        "STACK_NAME_KEY": "stack_name",
+        "STACK_ID_KEY": "stack_id",
+        # Standard values in registry.
+        "STATUS_DEPLOYED": "Deployed",
+        "STATUS_NOT_DEPLOYED": "Not deployed",
+        # Docker image constructions.
+        "DEFAULT_PROJECT_MODULES": ["boto3"],
+        "APP_DIR_ON_IMAGE": "app",
+        # User messages.
+        "MSG_PREFIX": "\033[1;36;40m MLDeploy Message:: \033[m",
+        "FAIL_PREFIX": "\033[1;31;40m MLDeploy Failure:: \033[m",
+        "ACTION_PREFIX": "\033[1;33;40m MLDeploy Action Required:: \033[m",
+    }
+    return d_constants[key]
 
 
 # =============================================================================
@@ -63,12 +83,12 @@ def _get_appdata_folder() -> str:
     file.
     """
     user_home = pathlib.Path.home()
-    if PLATFORM == "linux":
+    if _get_constant("PLATFORM") == "linux":
         appdata_folder = user_home / ".local/share"
-    elif PLATFORM == "win32":
+    elif _get_constant("PLATFORM") == "win32":
         appdata_folder = user_home / "AppData/Roaming"
     else:
-        raise ValueError(f"Unknown operating system: {PLATFORM}")
+        raise ValueError(f"Unknown operating system: {_get_constant('PLATFORM')}")
     return str(appdata_folder) + "/mldeploy"
 
 
@@ -77,7 +97,7 @@ def _get_registry_path() -> str:
     Returns the full file path of the 'mldeploy' registry file.
     """
     appdata_folder = _get_appdata_folder()
-    return appdata_folder + "/" + REG_FILE_NAME
+    return appdata_folder + "/" + _get_constant("REG_FILE_NAME")
 
 
 def _get_registry_data() -> Dict:
@@ -246,11 +266,17 @@ def _delete_docker_image(name: str, deleting_project: bool = False) -> NoReturn:
         im_list = [im.tags[0] for im in client.images.list() if len(im.tags) > 0]
         if reg_docker_image in im_list:
             client.images.remove(reg_docker_image)
-            print(f"{MSG_PREFIX}Deleting existing project image: {reg_docker_image}")
+            print(
+                f"{_get_constant('MSG_PREFIX')}Deleting existing project image: {reg_docker_image}"
+            )
         else:
-            print(f"{FAIL_PREFIX}Project image '{reg_docker_image}' not found.")
+            print(
+                f"{_get_constant('FAIL_PREFIX')}Project image '{reg_docker_image}' not found."
+            )
     else:
-        print(f"{MSG_PREFIX}Project image '{reg_docker_image}' was not deleted.")
+        print(
+            f"{_get_constant('MSG_PREFIX')}Project image '{reg_docker_image}' was not deleted."
+        )
 
 
 # =============================================================================
@@ -286,7 +312,9 @@ def _temp_copy_local_files(name: str) -> NoReturn:
                 elif os.path.isfile(src_i):
                     shutil.copy(src_i, dst_i)
                 else:
-                    raise ValueError(f"{FAIL_PREFIX}Unknown object to copy: {src_i}")
+                    raise ValueError(
+                        f"{_get_constant('FAIL_PREFIX')}Unknown object to copy: {src_i}"
+                    )
 
 
 def _remove_temp_files(name: str) -> NoReturn:

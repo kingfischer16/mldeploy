@@ -36,10 +36,7 @@ from .utils import (
     _get_project_folder,
     _get_registry_lists,
     _get_appdata_folder,
-    CURR_DIR,
-    MSG_PREFIX,
-    FAIL_PREFIX,
-    ACTION_PREFIX,
+    _get_constant,
 )
 from .aws import _add_cloudformation_template
 
@@ -54,14 +51,16 @@ def test() -> str:
     Returns:
         (str): A test string.
     """
-    return f"{MSG_PREFIX}This is a test. MLDeploy has installed successfully."
+    return f"{_get_constant('MSG_PREFIX')}This is a test. MLDeploy has installed successfully."
 
 
 def cwd() -> str:
     """
     Returns the current working directory of the CLI code.
     """
-    return f"{MSG_PREFIX}Current directory: {CURR_DIR}"
+    return (
+        f"{_get_constant('MSG_PREFIX')}Current directory: {_get_constant('CURR_DIR')}"
+    )
 
 
 def ls() -> NoReturn:
@@ -69,7 +68,7 @@ def ls() -> NoReturn:
     Lists all projects controlled by the CLI.
     """
     reg_lists = _get_registry_lists()
-    print(f"{MSG_PREFIX}Registered projects:\n")
+    print(f"{_get_constant('MSG_PREFIX')}Registered projects:\n")
     headers = list(reg_lists.keys())
     header_string = "".join(headers)
     print(header_string)
@@ -98,15 +97,15 @@ def create(name: str, path: str = _get_appdata_folder()) -> NoReturn:
     reg_data = _get_registry_data()
     if name in reg_data.keys():
         print(
-            f"{FAIL_PREFIX}Cannot create project with name '{name}'. Project name already exists at location: '{reg_data[name]['location']}'"
+            f"{_get_constant('FAIL_PREFIX')}Cannot create project with name '{name}'. Project name already exists at location: '{reg_data[name]['location']}'"
         )
         sys.exit()
     elif os.path.exists(path_dir):
         print(
-            f"{FAIL_PREFIX}Cannot create project at specified path: {path_dir}. Folder already exists."
+            f"{_get_constant('FAIL_PREFIX')}Cannot create project at specified path: {path_dir}. Folder already exists."
         )
     else:
-        print(f"{MSG_PREFIX}Creating project '{name}'...")
+        print(f"{_get_constant('MSG_PREFIX')}Creating project '{name}'...")
         _create_registry_file_if_not_exists()
         _add_project_to_registry(project_path=path_dir)
         print(f"\tProject registered successfully.")
@@ -116,9 +115,11 @@ def create(name: str, path: str = _get_appdata_folder()) -> NoReturn:
         _copy_dockerignore(name)
         print(f"\tConfiguration file created.")
         _create_requirements_file(name)
-        print(f"{MSG_PREFIX}Successfully created project '{name}' in '{path_dir}'")
         print(
-            f"{ACTION_PREFIX}Edit configuration file '{_get_project_folder(name)+'/config.yml'}' to set deployment details."
+            f"{_get_constant('MSG_PREFIX')}Successfully created project '{name}' in '{path_dir}'"
+        )
+        print(
+            f"{_get_constant('ACTION_PREFIX')}Edit configuration file '{_get_project_folder(name)+'/config.yml'}' to set deployment details."
         )
 
 
@@ -133,17 +134,21 @@ def delete(name: str) -> NoReturn:
     """
     reg_data = _get_registry_data()
     if name not in reg_data.keys():
-        print(f"{FAIL_PREFIX}Project with name '{name}' does not exist.")
+        print(
+            f"{_get_constant('FAIL_PREFIX')}Project with name '{name}' does not exist."
+        )
     else:
         user_confirm = input(
-            f"{ACTION_PREFIX}Confirm this action to PERMANENTLY delete the local project by typing the name again (or press <Enter> to cancel): "
+            f"{_get_constant('ACTION_PREFIX')}Confirm this action to PERMANENTLY delete the local project by typing the name again (or press <Enter> to cancel): "
         )
         if name == user_confirm:
             _delete_project(name)
-            print(f"{MSG_PREFIX}Contents for project '{name}' has been deleted.")
+            print(
+                f"{_get_constant('MSG_PREFIX')}Contents for project '{name}' has been deleted."
+            )
         else:
             print(
-                f"{FAIL_PREFIX}Delete operation for project '{name}' was not completed."
+                f"{_get_constant('FAIL_PREFIX')}Delete operation for project '{name}' was not completed."
             )
 
 
@@ -158,12 +163,12 @@ def build(name: str = "") -> NoReturn:
     proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
     registerd_projects = list(_get_registry_data().keys())
     if proj_name not in registerd_projects:
-        print(f"{FAIL_PREFIX}Project '{proj_name}' does not exist.")
+        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
         sys.exit()
     else:
         _build_or_get_image(proj_name)
         _add_cloudformation_template(proj_name)
-        print(f"{MSG_PREFIX}Project build successful.")
+        print(f"{_get_constant('MSG_PREFIX')}Project build successful.")
 
 
 def deploy(name: str = "") -> NoReturn:
@@ -176,10 +181,10 @@ def deploy(name: str = "") -> NoReturn:
     proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
     registerd_projects = list(_get_registry_data().keys())
     if proj_name not in registerd_projects:
-        print(f"{FAIL_PREFIX}Project '{proj_name}' does not exist.")
+        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
         sys.exit()
     else:
-        print(f"{MSG_PREFIX}***PROJECT DEPLOYING***")
+        print(f"{_get_constant('MSG_PREFIX')}***PROJECT DEPLOYING***")
         _deploy_stack(name)
 
 
@@ -193,7 +198,7 @@ def update(name: str = "") -> NoReturn:
     proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
     registerd_projects = list(_get_registry_data().keys())
     if proj_name not in registerd_projects:
-        print(f"{FAIL_PREFIX}Project '{proj_name}' does not exist.")
+        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
         sys.exit()
     else:
-        print(f"{MSG_PREFIX}***PROJECT UPDATE PLACEHOLDER***")
+        print(f"{_get_constant('MSG_PREFIX')}***PROJECT UPDATE PLACEHOLDER***")

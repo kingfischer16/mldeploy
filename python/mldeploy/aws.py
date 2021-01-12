@@ -26,13 +26,7 @@ from .utils import (
     _get_field_if_exists,
     _add_field_to_registry,
     _add_salt,
-    MSG_PREFIX,
-    CLOUDFORMATION_FILE_NAME,
-    CLOUDFORMATION_LOCATION_KEY,
-    PROJ_FOLDER_KEY,
-    SALT_KEY,
-    S3_STORE_PREF,
-    STACK_NAME_KEY,
+    _get_constant,
 )
 
 
@@ -67,8 +61,8 @@ def _create_cloudformation_file(name: str) -> NoReturn:
         FileExistsError: If the CloudFormation template already exists.
          To prevent overwriting.
     """
-    proj_folder = _get_field_if_exists(name, PROJ_FOLDER_KEY)
-    cf_filename = proj_folder + "/" + CLOUDFORMATION_FILE_NAME
+    proj_folder = _get_field_if_exists(name, _get_constant("PROJ_FOLDER_KEY"))
+    cf_filename = proj_folder + "/" + _get_constant("CLOUDFORMATION_FILE_NAME")
     if os.path.exists(cf_filename):
         raise FileExistsError(
             f"A CloudFormation template already exists at the location: {cf_filename}"
@@ -86,7 +80,9 @@ def _create_cloudformation_file(name: str) -> NoReturn:
     with open(cf_filename, "w") as f:
         yaml_obj.dump(file_contents, f)
     # Register the CloudFormation template file in the registry.
-    _add_field_to_registry(name, CLOUDFORMATION_LOCATION_KEY, cf_filename)
+    _add_field_to_registry(
+        name, _get_constant("CLOUDFORMATION_LOCATION_KEY"), cf_filename
+    )
     # Register a project hash, for ensuring
 
 
@@ -114,10 +110,10 @@ def _add_project_s3_bucket(name: str) -> NoReturn:
         name (str): Name of the project for which to create the bucket.
     """
     cf_data = _get_cloudformation_template_data(name)
-    cf_data["Resources"][f"{S3_STORE_PREF}{name}"] = {
+    cf_data["Resources"][f"{_get_constant('S3_STORE_PREF')}{name}"] = {
         "Type": "AWS::S3::Bucket",
         "Properties": {
-            "BucketName": f"{name}-store-{_get_field_if_exists(name, SALT_KEY)}"
+            "BucketName": f"{name}-store-{_get_field_if_exists(name, _get_constant('SALT_KEY'))}"
         },
     }
     _update_cloudformation_template_data(name, cf_data)
@@ -159,7 +155,9 @@ def _get_cloudformation_template_data(name: str) -> Dict:
 
         FileNotFoundError: If the CloudFormation template is registered but cannot be found.
     """
-    cf_filepath = _get_field_if_exists(name, CLOUDFORMATION_LOCATION_KEY)
+    cf_filepath = _get_field_if_exists(
+        name, _get_constant("CLOUDFORMATION_LOCATION_KEY")
+    )
     if cf_filepath == "(None)":
         raise FileNotFoundError(
             f"No CloudFormation template registered for project '{name}'."
@@ -190,7 +188,9 @@ def _update_cloudformation_template_data(name: str, data: Dict) -> NoReturn:
 
         data (dict): The data dictionary to use to update the template.
     """
-    cf_filepath = _get_field_if_exists(name, CLOUDFORMATION_LOCATION_KEY)
+    cf_filepath = _get_field_if_exists(
+        name, _get_constant("CLOUDFORMATION_LOCATION_KEY")
+    )
     yaml_obj = ryml.YAML()
     with open(cf_filepath, "w") as f:
         yaml_obj.dump(data, f)
@@ -206,12 +206,15 @@ def _deploy_stack(name: str) -> NoReturn:
     Args:
         name (str): The project name.
     """
-    # Create stack name and register.
-    stack_name = f"{name}-mldeploy-{_get_field_if_exists(name, SALT_KEY)}"
-    _add_field_to_registry(name, STACK_NAME_KEY, stack_name)
+    # Create stack name.
+    stack_name = (
+        f"{name}-mldeploy-{_get_field_if_exists(name, _get_constant('SALT_KEY'))}"
+    )
     # Get template.
     yaml_obj = ryml.YAML()
-    cf_filepath = _get_field_if_exists(name, CLOUDFORMATION_LOCATION_KEY)
+    cf_filepath = _get_field_if_exists(
+        name, _get_constant("CLOUDFORMATION_LOCATION_KEY")
+    )
     with open(cf_filepath, "r") as f:
         cf_template_yaml = yaml_obj.load(f)
     cf_template = json.dumps(cf_template_yaml)
@@ -221,5 +224,22 @@ def _deploy_stack(name: str) -> NoReturn:
     d_stack_id = client.create_stack(StackName=stack_name, TemplateBody=cf_template)
     stack_id = d_stack_id["StackId"]
     print(
-        f"{MSG_PREFIX}Deployment created successfully for project '{name}'. Stack ID: {stack_id}"
+        f"{_get_constant('MSG_PREFIX')}Deployment created successfully for project '{name}'.\n\tStack ID: {stack_id}"
+    )
+    # Register stack.
+    _register_deployment(name, stack_name, stack_id)
+
+
+def _register_deployment(name: str, stack_name: str, stack_id: str) -> NoReturn:
+    """
+    Registers the stack ID of the deployment in the project registry
+    and sets the 'deployment_status' of the project to 'Deployed'.
+
+    Args:
+        name (str): The project name.
+    """
+    _add_field_to_registry(name, _get_constant("STACK_NAME_KEY"), stack_name)
+    _add_field_to_registry(name, _get_constant("STACK_ID_KEY"), stack_id)
+    _add_field_to_registry(
+        name, _get_constant("DEPLOY_STATUS_KEY"), _get_constant("STATUS_DEPLOYED")
     )
