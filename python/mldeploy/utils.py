@@ -55,6 +55,7 @@ def _get_constant(key: str) -> Union[str, list]:
         # Registry key names.
         "CLOUDFORMATION_LOCATION_KEY": "cloudformation_template",
         "DEPLOY_STATUS_KEY": "deployment_status",
+        "DOCKER_IMAGE_KEY": "docker-image",
         "PROJ_FOLDER_KEY": "location",
         "SALT_KEY": "salt",
         "STACK_NAME_KEY": "stack_name",
@@ -345,18 +346,27 @@ def _get_registry_lists() -> Dict:
         "name": "Project Name",
         "folder": "Project Folder",
         "image": "Docker Image",
+        "deploy_status": "Deployment Status",
     }
     d_reg = OrderedDict()
     d_reg[fnames["name"]] = []
     d_reg[fnames["folder"]] = []
     d_reg[fnames["image"]] = []
+    d_reg[fnames["deploy_status"]] = []
 
     # Build project field list.
     project_names = list(_get_registry_data().keys())
     for pname in project_names:
         d_reg[fnames["name"]].append(pname)
-        d_reg[fnames["folder"]].append(_get_field_if_exists(pname, "location"))
-        d_reg[fnames["image"]].append(_get_field_if_exists(pname, "docker-image"))
+        d_reg[fnames["folder"]].append(
+            _get_field_if_exists(pname, _get_constant("PROJ_FOLDER_KEY"))
+        )
+        d_reg[fnames["image"]].append(
+            _get_field_if_exists(pname, _get_constant("DOCKER_IMAGE_KEY"))
+        )
+        d_reg[fnames["deploy_status"]].append(
+            _get_field_if_exists(pname, _get_constant("DEPLOY_STATUS_KEY"))
+        )
 
     # Pad strings.
     d_flen = {k: 0 for k in d_reg.keys()}

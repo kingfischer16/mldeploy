@@ -199,6 +199,7 @@ def _build_docker_image(name: str) -> NoReturn:
     # Register Docker image.
     print(f"{_get_constant('MSG_PREFIX')}Docker image build succeeded: {image_name}")
     _add_field_to_registry(name, "docker-image", image_name)
+    # Send logs to file.
     for l in logs:
         print(l)
 
