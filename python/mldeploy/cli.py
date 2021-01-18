@@ -17,7 +17,17 @@
 import fire  # The python-fire CLI engine.
 from typing import NoReturn
 
-from .mldeploy_functions import test, cwd, ls, create, build, delete, deploy
+from .mldeploy_functions import (
+    test,
+    cwd,
+    ls,
+    create,
+    build,
+    delete,
+    deploy,
+    update,
+    undeploy,
+)
 
 
 # =============================================================================
@@ -38,6 +48,8 @@ def main() -> NoReturn:
             "delete": delete,
             "deploy": deploy,
             "ls": ls,
+            "undeploy": undeploy,
+            "update": update,
             "test": test,
         }
     )

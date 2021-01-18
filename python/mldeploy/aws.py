@@ -206,6 +206,12 @@ def _deploy_stack(name: str) -> NoReturn:
     Args:
         name (str): The project name.
     """
+    deployed_status = _get_field_if_exists(name, _get_constant("DEPLOY_STATUS_KEY"))
+    if deployed_status == _get_constant("STATUS_DEPLOYED"):
+        print(
+            f"{_get_constant('FAIL_PREFIX')}Deployment failed for project '{name}. A stack is already deployed for this project."
+        )
+        return
     # Create stack name.
     stack_name = (
         f"{name}-mldeploy-{_get_field_if_exists(name, _get_constant('SALT_KEY'))}"
@@ -227,19 +233,55 @@ def _deploy_stack(name: str) -> NoReturn:
         f"{_get_constant('MSG_PREFIX')}Deployment created successfully for project '{name}'.\n\tStack ID: {stack_id}"
     )
     # Register stack.
-    _register_deployment(name, stack_name, stack_id)
+    _register_deployment(name, stack_name, stack_id, deployed=True)
 
 
-def _register_deployment(name: str, stack_name: str, stack_id: str) -> NoReturn:
+def _undeploy_stack(name: str) -> NoReturn:
     """
-    Registers the stack ID of the deployment in the project registry
-    and sets the 'deployment_status' of the project to 'Deployed'.
+    Removes a deployed stack from AWS CloudFormation.
 
     Args:
         name (str): The project name.
     """
+    deployed_status = _get_field_if_exists(name, _get_constant("DEPLOY_STATUS_KEY"))
+    if deployed_status == _get_constant("STATUS_NOT_DEPLOYED"):
+        print(
+            f"{_get_constant('FAIL_PREFIX')}Undeploy action failed for project '{name}. Project has no stack deployed."
+        )
+        return
+    # Create stack name.
+    stack_name = _get_field_if_exists(name, _get_constant("STACK_NAME_KEY"))
+    # Create client.
+    client = boto3.client("cloudformation")
+    # Create stack.
+    client.delete_stack(StackName=stack_name)
+    print(f"{_get_constant('MSG_PREFIX')}Stack removed for project '{name}'.")
+    # Register stack.
+    _register_deployment(name, "", "", deployed=False)
+
+
+def _register_deployment(
+    name: str, stack_name: str, stack_id: str, deployed: bool
+) -> NoReturn:
+    """
+    Registers or deregisteres the stack ID of the deployment in
+    the project registry and sets the 'deployment_status' of the project.
+
+    Args:
+        name (str): The project name.
+
+        stack_name (str): The name of the CloudFormation stack to register.
+
+        stack_id (str): The CloudFormation ID of the deployed stack.
+
+        deployed (bool): Set True if stack is deployed and being registered,
+         set False if the stack is being removed and being deregistered.
+    """
     _add_field_to_registry(name, _get_constant("STACK_NAME_KEY"), stack_name)
     _add_field_to_registry(name, _get_constant("STACK_ID_KEY"), stack_id)
-    _add_field_to_registry(
-        name, _get_constant("DEPLOY_STATUS_KEY"), _get_constant("STATUS_DEPLOYED")
+    deploy_status = (
+        _get_constant("STATUS_DEPLOYED")
+        if deployed
+        else _get_constant("STATUS_NOT_DEPLOYED")
     )
+    _add_field_to_registry(name, _get_constant("DEPLOY_STATUS_KEY"), deploy_status)

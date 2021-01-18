@@ -20,7 +20,7 @@ import os
 import sys
 from typing import NoReturn, Dict
 
-from .aws import _deploy_stack
+from .aws import _deploy_stack, _undeploy_stack, _add_cloudformation_template
 from .docker_tools import _build_or_get_image
 from .cleanup import _delete_project
 from .startup import (
@@ -33,12 +33,12 @@ from .startup import (
 )
 from .utils import (
     _get_registry_data,
+    _get_field_if_exists,
     _get_project_folder,
     _get_registry_lists,
     _get_appdata_folder,
     _get_constant,
 )
-from .aws import _add_cloudformation_template
 
 
 # =============================================================================
@@ -142,6 +142,10 @@ def delete(name: str) -> NoReturn:
             f"{_get_constant('ACTION_PREFIX')}Confirm this action to PERMANENTLY delete the local project by typing the name again (or press <Enter> to cancel): "
         )
         if name == user_confirm:
+            if _get_field_if_exists(
+                name, _get_constant("DEPLOY_STATUS_KEY")
+            ) == _get_constant("STATUS_DEPLOYED"):
+                undeploy(name)
             _delete_project(name)
             print(
                 f"{_get_constant('MSG_PREFIX')}Contents for project '{name}' has been deleted."
@@ -184,8 +188,24 @@ def deploy(name: str = "") -> NoReturn:
         print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
         sys.exit()
     else:
-        print(f"{_get_constant('MSG_PREFIX')}***PROJECT DEPLOYING***")
+        print(f"{_get_constant('MSG_PREFIX')}Deploying project: {proj_name}")
         _deploy_stack(name)
+
+
+def undeploy(name: str = "") -> NoReturn:
+    """
+    Removes the stack associated with the specified project
+    from AWS and CloudFormation. This leaves the project files
+    on the local machine unaffected.
+    """
+    proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
+    registerd_projects = list(_get_registry_data().keys())
+    if proj_name not in registerd_projects:
+        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
+        sys.exit()
+    else:
+        print(f"{_get_constant('MSG_PREFIX')}Removing deployment: {proj_name}")
+        _undeploy_stack(name)
 
 
 def update(name: str = "") -> NoReturn:
