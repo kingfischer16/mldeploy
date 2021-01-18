@@ -48,6 +48,8 @@ def _get_constant(key: str) -> Union[str, list]:
         "TEMPLATES_FOLDER": str(os.path.dirname(os.path.realpath(__file__)))
         + "/config_templates",
         "PLATFORM": sys.platform,
+        "DOCKER_LOG_FOLDER": "docker_build_logs",
+        "DOCKER_LOG_FILE_TAG": "_docker_build_log_",
         "REG_FILE_NAME": ".registry.json",
         "CLOUDFORMATION_FILE_NAME": ".cloudformation.yml",
         # AWS prefix names.

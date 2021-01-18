@@ -20,7 +20,7 @@ import docker
 import os
 import ruamel.yaml as ryml  # Allows modification of YAML file without disrupting comments.
 import shutil
-from typing import NoReturn, List
+from typing import NoReturn, List, Iterator
 
 from .utils import (
     _get_project_folder,
@@ -200,8 +200,7 @@ def _build_docker_image(name: str) -> NoReturn:
     print(f"{_get_constant('MSG_PREFIX')}Docker image build succeeded: {image_name}")
     _add_field_to_registry(name, "docker-image", image_name)
     # Send logs to file.
-    for l in logs:
-        print(l)
+    _save_build_logs_to_file(name, logs)
 
 
 # =============================================================================
@@ -248,3 +247,35 @@ def _generate_image_name(name: str) -> str:
     """
     dt_string = datetime.now().strftime("%Y%m%d-%H%M%S")
     return f"{name}_mldeploy:{dt_string}"
+
+
+# =============================================================================
+# Docker logging.
+# -----------------------------------------------------------------------------
+def _save_build_logs_to_file(name: str, logs_iter: Iterator[str]) -> NoReturn:
+    """
+    Saves the docker build logs to a .txt file.
+
+    Args:
+        name (str): Project name.
+    """
+    # Setup file and folder names.
+    log_filename = (
+        name
+        + _get_constant("DOCKER_LOG_FILE_TAG")
+        + datetime.now().strftime("%Y%m%d-%H%M%S")
+        + ".txt"
+    )
+    folder_location = (
+        _get_project_folder(name) + "/" + _get_constant("DOCKER_LOG_FOLDER") + "/"
+    )
+    # Create folder if it does not exist.
+    if not os.path.exists(folder_location):
+        os.makedirs(folder_location)
+    with open(folder_location + log_filename, "w") as f:
+        for log in logs_iter:
+            if "stream" in log:
+                f.write(str(log["stream"]))
+    print(
+        f"{_get_constant('MSG_PREFIX')}View Docker build log: {folder_location}{log_filename}"
+    )
