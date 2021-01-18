@@ -401,3 +401,28 @@ def _check_for_project_name_and_exists(name: str) -> str:
         sys.exit()
     else:
         return proj_name
+
+
+def _print_project_status(name: str) -> NoReturn:
+    """
+    Displays the project status.
+
+    Args:
+        name (str): The project name.
+    """
+    # Setup status string.
+    status_string = (
+        "PROJECT STATUS\n--------------\n"
+        + f"\tProject name: {name}\n"
+        + f"\tProject folder: {_get_project_folder(name)}\n\n"
+        + f"DOCKER\n------\n"
+        + f"\tDocker image: {_get_field_if_exists(name, _get_constant('DOCKER_IMAGE_KEY'))}\n"
+        + f"\tDocker build logs: {_get_project_folder(name)+_get_constant('DOCKER_LOG_FOLDER')}\n\n"
+        + f"CLOUDFORMATION\n--------------\n"
+        + f"\tDeployment status: {_get_field_if_exists(name, _get_constant('DEPLOY_STATUS_KEY'))}\n"
+        + f"\tCloudFormation template: {_get_field_if_exists(name, _get_constant('CLOUDFORMATION_LOCATION_KEY'))}\n"
+        + f"\tStack name: {_get_field_if_exists(name, _get_constant('STACK_NAME_KEY'))}\n"
+        + f"\tStack ID: {_get_field_if_exists(name, _get_constant('STACK_ID_KEY'))}\n\n"
+    )
+    # Display status string.
+    print(status_string)

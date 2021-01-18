@@ -39,6 +39,7 @@ from .utils import (
     _get_appdata_folder,
     _get_constant,
     _check_for_project_name_and_exists,
+    _print_project_status,
 )
 
 
@@ -178,8 +179,10 @@ def deploy(name: str = "") -> NoReturn:
     Args:
         name (str): Name of the project to deploy.
     """
-    _check_for_project_name_and_exists(name)
-    print(f"{_get_constant('MSG_PREFIX')}Deploying project: {proj_name}")
+    proj_name = _check_for_project_name_and_exists(name)
+    print(
+        f"{_get_constant('MSG_PREFIX')}Deploying project:_print_project_status {proj_name}"
+    )
     _deploy_stack(name)
 
 
@@ -213,4 +216,4 @@ def status(name: str = "") -> NoReturn:
         name (str): Name of the project to update.
     """
     proj_name = _check_for_project_name_and_exists(name)
-    print(f"{_get_constant('MSG_PREFIX')}***PROJECT UPDATE PLACEHOLDER*** {proj_name}")
+    _print_project_status(proj_name)
