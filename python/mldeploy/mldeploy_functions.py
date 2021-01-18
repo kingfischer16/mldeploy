@@ -38,6 +38,8 @@ from .utils import (
     _get_registry_lists,
     _get_appdata_folder,
     _get_constant,
+    _check_for_project_name_and_exists,
+    _print_project_status,
 )
 
 
@@ -164,15 +166,10 @@ def build(name: str = "") -> NoReturn:
     Args:
         name (str): Name of the project to delete.
     """
-    proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
-    registerd_projects = list(_get_registry_data().keys())
-    if proj_name not in registerd_projects:
-        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
-        sys.exit()
-    else:
-        _build_or_get_image(proj_name)
-        _add_cloudformation_template(proj_name)
-        print(f"{_get_constant('MSG_PREFIX')}Project build successful.")
+    proj_name = _check_for_project_name_and_exists(name)
+    _build_or_get_image(proj_name)
+    _add_cloudformation_template(proj_name)
+    print(f"{_get_constant('MSG_PREFIX')}Project build successful.")
 
 
 def deploy(name: str = "") -> NoReturn:
@@ -182,14 +179,11 @@ def deploy(name: str = "") -> NoReturn:
     Args:
         name (str): Name of the project to deploy.
     """
-    proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
-    registerd_projects = list(_get_registry_data().keys())
-    if proj_name not in registerd_projects:
-        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
-        sys.exit()
-    else:
-        print(f"{_get_constant('MSG_PREFIX')}Deploying project: {proj_name}")
-        _deploy_stack(name)
+    proj_name = _check_for_project_name_and_exists(name)
+    print(
+        f"{_get_constant('MSG_PREFIX')}Deploying project:_print_project_status {proj_name}"
+    )
+    _deploy_stack(name)
 
 
 def undeploy(name: str = "") -> NoReturn:
@@ -198,14 +192,9 @@ def undeploy(name: str = "") -> NoReturn:
     from AWS and CloudFormation. This leaves the project files
     on the local machine unaffected.
     """
-    proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
-    registerd_projects = list(_get_registry_data().keys())
-    if proj_name not in registerd_projects:
-        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
-        sys.exit()
-    else:
-        print(f"{_get_constant('MSG_PREFIX')}Removing deployment: {proj_name}")
-        _undeploy_stack(name)
+    proj_name = _check_for_project_name_and_exists(name)
+    print(f"{_get_constant('MSG_PREFIX')}Removing deployment: {proj_name}")
+    _undeploy_stack(name)
 
 
 def update(name: str = "") -> NoReturn:
@@ -215,10 +204,16 @@ def update(name: str = "") -> NoReturn:
     Args:
         name (str): Name of the project to update.
     """
-    proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
-    registerd_projects = list(_get_registry_data().keys())
-    if proj_name not in registerd_projects:
-        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
-        sys.exit()
-    else:
-        print(f"{_get_constant('MSG_PREFIX')}***PROJECT UPDATE PLACEHOLDER***")
+    proj_name = _check_for_project_name_and_exists(name)
+    print(f"{_get_constant('MSG_PREFIX')}***PROJECT UPDATE PLACEHOLDER***{proj_name}")
+
+
+def status(name: str = "") -> NoReturn:
+    """
+    Displays a detailed status for the specified project.
+
+    Args:
+        name (str): Name of the project to update.
+    """
+    proj_name = _check_for_project_name_and_exists(name)
+    _print_project_status(proj_name)

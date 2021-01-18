@@ -379,3 +379,50 @@ def _get_registry_lists() -> Dict:
         d_output[k.ljust(d_flen[k])] = d_reg[k]
 
     return d_output
+
+
+def _check_for_project_name_and_exists(name: str) -> str:
+    """
+    Checks if the project name or current folder exists in the
+    project registry. If not, throws a failure message and exits.
+
+    Args:
+        name (str): Project name.
+
+    Returns:
+        (str): The project name.
+    """
+    # Get project name if name not provided.
+    proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
+    # Get list of registered projects.
+    registerd_projects = list(_get_registry_data().keys())
+    if proj_name not in registerd_projects:
+        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
+        sys.exit()
+    else:
+        return proj_name
+
+
+def _print_project_status(name: str) -> NoReturn:
+    """
+    Displays the project status.
+
+    Args:
+        name (str): The project name.
+    """
+    # Setup status string.
+    status_string = (
+        "PROJECT STATUS\n--------------\n"
+        + f"\tProject name: {name}\n"
+        + f"\tProject folder: {_get_project_folder(name)}\n\n"
+        + f"DOCKER\n------\n"
+        + f"\tDocker image: {_get_field_if_exists(name, _get_constant('DOCKER_IMAGE_KEY'))}\n"
+        + f"\tDocker build logs: {_get_project_folder(name)+_get_constant('DOCKER_LOG_FOLDER')}\n\n"
+        + f"CLOUDFORMATION\n--------------\n"
+        + f"\tDeployment status: {_get_field_if_exists(name, _get_constant('DEPLOY_STATUS_KEY'))}\n"
+        + f"\tCloudFormation template: {_get_field_if_exists(name, _get_constant('CLOUDFORMATION_LOCATION_KEY'))}\n"
+        + f"\tStack name: {_get_field_if_exists(name, _get_constant('STACK_NAME_KEY'))}\n"
+        + f"\tStack ID: {_get_field_if_exists(name, _get_constant('STACK_ID_KEY'))}\n\n"
+    )
+    # Display status string.
+    print(status_string)

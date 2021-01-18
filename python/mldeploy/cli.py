@@ -25,6 +25,7 @@ from .mldeploy_functions import (
     build,
     delete,
     deploy,
+    status,
     update,
     undeploy,
 )
@@ -48,6 +49,7 @@ def main() -> NoReturn:
             "delete": delete,
             "deploy": deploy,
             "ls": ls,
+            "status": status,
             "undeploy": undeploy,
             "update": update,
             "test": test,
