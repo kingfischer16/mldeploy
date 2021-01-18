@@ -17,6 +17,7 @@ Code can be local or pulled directly from a GitHub repository. Applications are 
 The tool can setup project folders with configuration files and registry, create a Dockerfile and build a Docker image.
 
 ---
+
 #### Disclaimer
 The code within this repository is provided as is, for use as dictated by the LICENSE file. Any charges incurred from cloud resources as a result of deploying code is soley the responsibility of the end user. Please be responsible and monitor your resource usage to avoid unwanted or excessive charges.
  
