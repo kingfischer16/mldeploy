@@ -25,6 +25,7 @@ from .utils import (
     _add_field_to_registry,
     _get_field_if_exists,
     _add_field_to_registry,
+    _get_project_folder,
     _add_salt,
     _get_constant,
 )
@@ -42,9 +43,16 @@ def _add_cloudformation_template(name: str) -> NoReturn:
     Args:
         name (str): Name of the project to create the cloudformation file.
     """
-    _create_cloudformation_file(name)
-    _add_project_s3_bucket(name)
-    _add_ec2_instance(name)
+    if os.path.exists(
+        _get_field_if_exists(name, _get_constant("CLOUDFORMATION_LOCATION_KEY"))
+    ):
+        print(
+            f"{_get_constant('MSG_PREFIX')}CloudFormation template already exists for project '{name}'. Existing template was not overwritten."
+        )
+    else:
+        _create_cloudformation_file(name)
+        _add_project_s3_bucket(name)
+        _add_ec2_instance(name)
 
 
 # =============================================================================
