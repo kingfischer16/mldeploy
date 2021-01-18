@@ -379,3 +379,25 @@ def _get_registry_lists() -> Dict:
         d_output[k.ljust(d_flen[k])] = d_reg[k]
 
     return d_output
+
+
+def _check_for_project_name_and_exists(name: str) -> str:
+    """
+    Checks if the project name or current folder exists in the
+    project registry. If not, throws a failure message and exits.
+
+    Args:
+        name (str): Project name.
+
+    Returns:
+        (str): The project name.
+    """
+    # Get project name if name not provided.
+    proj_name = os.getcwd().rsplit("/", 1)[1] if len(name) <= 0 else name
+    # Get list of registered projects.
+    registerd_projects = list(_get_registry_data().keys())
+    if proj_name not in registerd_projects:
+        print(f"{_get_constant('FAIL_PREFIX')}Project '{proj_name}' does not exist.")
+        sys.exit()
+    else:
+        return proj_name
