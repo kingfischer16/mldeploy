@@ -31,36 +31,36 @@ class TestGetAppDataFolder(TestCase):
     Test cases for the 'mldeploy.utils._get_appdata_folder' function.
     """
 
+    @mock.patch("utils._get_constant", return_value="linux")
     @mock.patch("utils.pathlib.Path.home")
-    def test_get_appdata_folder_linux(self, mock_homepath):
+    def test_get_appdata_folder_linux(self, mock_homepath, mock_constants):
         """
         Test the APPDATA path when the detected platform is 'linux'.
         """
         home_path_value = pathlib.PosixPath("/home/path")
         mock_homepath.return_value = home_path_value
-        utils.PLATFORM = "linux"
         app_folder = utils._get_appdata_folder()
         self.assertEqual(app_folder, str(home_path_value / ".local/share/mldeploy"))
 
+    @mock.patch("utils._get_constant", return_value="win32")
     @mock.patch("utils.pathlib.Path.home")
-    def test_get_appdata_folder_win32(self, mock_homepath):
+    def test_get_appdata_folder_win32(self, mock_homepath, mock_constants):
         """
         Test the APPDATA path when the detected platform is 'win32'.
         """
         home_path_value = pathlib.PosixPath("/home/path")
         mock_homepath.return_value = home_path_value
-        utils.PLATFORM = "win32"
         app_folder = utils._get_appdata_folder()
         self.assertEqual(app_folder, str(home_path_value / "AppData/Roaming/mldeploy"))
 
+    @mock.patch("utils._get_constant", return_value="something unknown")
     @mock.patch("utils.pathlib.Path.home")
-    def test_get_appdata_folder_other_error(self, mock_homepath):
+    def test_get_appdata_folder_other_error(self, mock_homepath, mock_constants):
         """
         Test the APPDATA path when the detected platform is not recognized.
         """
         home_path_value = pathlib.PosixPath("/home/path")
         mock_homepath.return_value = home_path_value
-        utils.PLATFORM = "something unknown"
         with self.assertRaises(ValueError) as cm:
             utils._get_appdata_folder()
         exc = cm.exception
@@ -80,7 +80,9 @@ class TestGetRegistryPath(TestCase):
         test_folder = "/appdata"
         mock_folder.return_value = test_folder
         reg_path = utils._get_registry_path()
-        self.assertEqual(reg_path, test_folder + "/" + utils.REG_FILE_NAME)
+        self.assertEqual(
+            reg_path, test_folder + "/" + utils._get_constant("REG_FILE_NAME")
+        )
 
 
 class TestGetRegistryData(TestCase):
@@ -254,9 +256,7 @@ class TestDeleteDockerImage(TestCase):
         mock_client = mock_env.return_value
         mock_client.images.list.return_value = [("reg_image", 1)]
         utils._delete_docker_image(proj_name, deleting_project=del_proj)
-        expected_output = (
-            f"{utils.MSG_PREFIX}Project image '{reg_im}' was not deleted.\n"
-        )
+        expected_output = f"{utils._get_constant('MSG_PREFIX')}Project image '{reg_im}' was not deleted.\n"
         self.assertEqual(mock_stdout.getvalue(), expected_output)
 
     @mock.patch("sys.stdout", new_callable=io.StringIO)
@@ -293,7 +293,9 @@ class TestDeleteDockerImage(TestCase):
 
         mock_client.images.list.return_value = [ImTags()]
         utils._delete_docker_image(proj_name, deleting_project=del_proj)
-        expected_output = f"{utils.FAIL_PREFIX}Project image '{reg_im}' not found.\n"
+        expected_output = (
+            f"{utils._get_constant('FAIL_PREFIX')}Project image '{reg_im}' not found.\n"
+        )
         self.assertEqual(mock_stdout.getvalue(), expected_output)
 
     @mock.patch("sys.stdout", new_callable=io.StringIO)
@@ -331,9 +333,7 @@ class TestDeleteDockerImage(TestCase):
 
         mock_client.images.list.return_value = [ImTags()]
         utils._delete_docker_image(proj_name, deleting_project=del_proj)
-        expected_output = (
-            f"{utils.MSG_PREFIX}Deleting existing project image: {reg_im}\n"
-        )
+        expected_output = f"{utils._get_constant('MSG_PREFIX')}Deleting existing project image: {reg_im}\n"
         self.assertEqual(mock_stdout.getvalue(), expected_output)
 
     @mock.patch("sys.stdout", new_callable=io.StringIO)
@@ -374,9 +374,7 @@ class TestDeleteDockerImage(TestCase):
 
         mock_client.images.list.return_value = [ImTags()]
         utils._delete_docker_image(proj_name, deleting_project=del_proj)
-        expected_output = (
-            f"{utils.MSG_PREFIX}Project image '{reg_im}' was not deleted.\n"
-        )
+        expected_output = f"{utils._get_constant('MSG_PREFIX')}Project image '{reg_im}' was not deleted.\n"
         self.assertEqual(mock_stdout.getvalue(), expected_output)
 
     @mock.patch("sys.stdout", new_callable=io.StringIO)
@@ -417,9 +415,7 @@ class TestDeleteDockerImage(TestCase):
 
         mock_client.images.list.return_value = [ImTags()]
         utils._delete_docker_image(proj_name, deleting_project=del_proj)
-        expected_output = (
-            f"{utils.MSG_PREFIX}Deleting existing project image: {reg_im}\n"
-        )
+        expected_output = f"{utils._get_constant('MSG_PREFIX')}Deleting existing project image: {reg_im}\n"
         self.assertEqual(mock_stdout.getvalue(), expected_output)
 
     @mock.patch("sys.stdout", new_callable=io.StringIO)
@@ -460,9 +456,7 @@ class TestDeleteDockerImage(TestCase):
 
         mock_client.images.list.return_value = [ImTags()]
         utils._delete_docker_image(proj_name, deleting_project=del_proj)
-        expected_output = (
-            f"{utils.MSG_PREFIX}Project image '{reg_im}' was not deleted.\n"
-        )
+        expected_output = f"{utils._get_constant('MSG_PREFIX')}Project image '{reg_im}' was not deleted.\n"
         self.assertEqual(mock_stdout.getvalue(), expected_output)
 
 
@@ -651,6 +645,15 @@ class TestGetFieldIfExists(TestCase):
         test_contents = utils._get_field_if_exists("proj", "no_field")
         self.assertEqual(test_contents, "(None)")
 
+    @mock.patch("utils._get_registry_data", return_value={"proj": {"field": ""}})
+    def test_get_field_if_exists_empty_field(self, mock_data):
+        """
+        Tests that ValueError returned if poject name is found but
+        the field is not found.
+        """
+        test_contents = utils._get_field_if_exists("proj", "field")
+        self.assertEqual(test_contents, "(None)")
+
     @mock.patch(
         "utils._get_registry_data", return_value={"proj": {"field": "contents"}}
     )
@@ -679,9 +682,11 @@ class TestGetRegistryLists(TestCase):
         proj_field = "Project Name   "
         folder_field = "Project Folder   "
         docker_field = "Docker Image   "
+        deploy_field = "Deployment Status   "
         proj_len = len(proj_field)
         folder_len = len(folder_field)
         docker_len = len(docker_field)
+        deploy_len = len(deploy_field)
         correct_result[proj_field] = ["proj1".ljust(proj_len), "proj2".ljust(proj_len)]
         correct_result[folder_field] = [
             "example".ljust(folder_len),
@@ -691,5 +696,11 @@ class TestGetRegistryLists(TestCase):
             "example".ljust(docker_len),
             "example".ljust(docker_len),
         ]
+        correct_result[deploy_field] = [
+            "example".ljust(deploy_len),
+            "example".ljust(deploy_len),
+        ]
         test_result = utils._get_registry_lists()
+        print(correct_result)
+        print(test_result)
         self.assertEqual(test_result, correct_result)
