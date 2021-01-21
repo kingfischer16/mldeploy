@@ -8,4 +8,15 @@
 # Author: kingfischer16 (https://github.com/kingfischer16/mldeploy)
 # =============================================================================
 
-from .mldeploy_functions import test, cwd, ls, create, build, delete
+from .mldeploy_functions import (
+    test,
+    cwd,
+    ls,
+    create,
+    build,
+    delete,
+    deploy,
+    undeploy,
+    status,
+    update,
+)
