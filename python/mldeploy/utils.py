@@ -137,6 +137,8 @@ def _get_field_if_exists(name: str, field: str) -> str:
     contents = "(None)"
     if field in reg_data[name].keys():
         contents = reg_data[name][field]
+    if len(contents) == 0:
+        contents = "(None)"
     return contents
 
 
