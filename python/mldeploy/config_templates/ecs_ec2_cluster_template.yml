@@ -18,9 +18,9 @@ Description: Complete deployment of ECS cluster using EC2 instances with API Gat
 Mappings:
   SubnetConfig:
     VPC:
-      CIDR: '172.16.0.0/16'
+      CIDR: '102.16.0.0/16'
     PrivateOne:
-      CIDR: '172.16.0.0/24'
+      CIDR: '102.16.0.0/24'
 
 
 Resources:
@@ -137,8 +137,76 @@ Resources:
 # =============================================================================
 # Core infrastructure.
 # -----------------------------------------------------------------------------
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: !FindInMap ['SubnetConfig', 'VPC', 'CIDR']
+
+  PrivateSubnetOne:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+         Fn::Select:
+         - 0
+         - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PrivateOne', 'CIDR']
+      MapPublicIpOnLaunch: false
 
 
+# =============================================================================
+# Cluster deployment.
+# -----------------------------------------------------------------------------
+# ECS Resources
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: test-ec2
+
+# A security group for the EC2 hosts that will run the containers.
+# Rules are added based on what ingress you choose to add to the cluster.
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS hosts that run containers
+      VpcId: !Ref 'VPC'
+
+# Autoscaling group. This launches the actual EC2 instances that will register
+# themselves as members of the cluster, and run the docker containers.
+  ECSAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier: !Ref 'PrivateSubnetOne'
+      LaunchConfigurationName: !Ref 'ContainerInstances'
+      MinSize: '1'
+      MaxSize: '4'
+      DesiredCapacity: '1'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: 'true'
+  ContainerInstances:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+      SecurityGroups: [!Ref 'ContainerSecurityGroup']
+      InstanceType: !Ref 'InstanceType'
+      IamInstanceProfile: !Ref 'EC2InstanceProfile'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: [ 'ecsInstanceRole' ]
 
 # =============================================================================
 # Outputs - exposed names for access via other systems.
@@ -164,3 +232,8 @@ Outputs:
     Value: !GetAtt 'ECSTaskExecutionRole.Arn'
     Export:
       Name: mldeploy-XXPROJECTNAMEXX:ECSTaskExecutionRole
+  ClusterName:
+    Description: The name of the ECS cluster
+    Value: !Ref 'ECSCluster'
+    Export:
+      Name: mldeploy-XXPROJECTNAMEXX:ClusterName
