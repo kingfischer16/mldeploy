@@ -15,6 +15,12 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: Complete deployment of ECS cluster using EC2 instances with API Gateway (mldeploy) in a single AZ.
 
+Parameters:
+  ECSAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+    Description: The Amazon Machine Image ID used for the cluster, leave it as the default value to get the latest AMI
+
 Mappings:
   SubnetConfig:
     VPC:
@@ -178,7 +184,7 @@ Resources:
   ECSAutoScalingGroup:
     Type: AWS::AutoScaling::AutoScalingGroup
     Properties:
-      VPCZoneIdentifier: !Ref 'PrivateSubnetOne'
+      VPCZoneIdentifier: [!Ref 'PrivateSubnetOne']
       LaunchConfigurationName: !Ref 'ContainerInstances'
       MinSize: '1'
       MaxSize: '4'
@@ -192,16 +198,10 @@ Resources:
   ContainerInstances:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
-      ImageId: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+      ImageId: !Ref 'ECSAMI'
       SecurityGroups: [!Ref 'ContainerSecurityGroup']
-      InstanceType: !Ref 'InstanceType'
+      InstanceType: t3.micro
       IamInstanceProfile: !Ref 'EC2InstanceProfile'
-      UserData:
-        Fn::Base64: !Sub |
-          #!/bin/bash -xe
-          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
-          yum install -y aws-cfn-bootstrap
-          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
