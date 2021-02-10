@@ -75,15 +75,17 @@ replace-image-on-rebuild: true
 # scaling triggers, and availability.
 aws-region: eu-north-1
 
-availability-zones:
-  - eu-north-1a
-#  - eu-north-1c
+number-availability-zones: 2  # integer, is there a reason this needs to be anything but 2?
 
+deployment-type: 'fargate'  # 'fargate' or 'ec2', only EC2 can use GPU resources
 use-autoscaling: yes  # yes or no
-min-instances: 0  # integer
-target-instances: 0  # integer
-max-instances: 1  # integer, must be greater than min-instances
+min-instances: 1  # integer
+target-instances: 1  # integer
+max-instances: 3  # integer, must be greater than min-instances
 increase-delay: 10  # seconds, time before instance is added after increase trigger
 decrease-delay: 300  # seconds, time before instance is removed after decrease trigger
 max-jobs-per-instance-before-scaleup: 3  # integer, maximum number of jobs allowed (per active instance) in queue before an instance is added, no scaleup trigger set if none provided
 min-jobs-per-instance-before-scaledown: 1  # intever, minimum number of jobs allowed (per active instance) in queue before an instance is removed, no scaledown trigger set if none provided
+
+min-cpus: 1  # float, minimum number of vCPU resources each instance needs to run
+min-ram: 1  # float, GB, minimum amount of memory each instance needs to run
