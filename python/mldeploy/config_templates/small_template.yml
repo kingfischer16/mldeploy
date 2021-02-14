@@ -1,0 +1,404 @@
+# =============================================================================
+# CloudFormation for ECS cluster using EC2 and ASG.
+# (Last modified: 2021-01-21)
+# 
+# This is the stock template for an ECS stack composed of EC2 instances and
+# autoscaling groups (ASG). This template creates all components required
+# for the cluster, including:
+#  - IAM roles
+#  - Core infrastructure: VPC, subnets, IGW, APIGW
+#  - Cluster: EC2 instances, ASG, scaling parameters
+#  - Containers and instructions
+# 
+# -----------------------------------------------------------------------------
+
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Complete deployment of ECS cluster using EC2 instances with API Gateway (mldeploy) for the XX_ProjectName_XX project.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: 'mldeploy-demo'  # 'XX_ProjectName_XX'
+    Description: The name of the project being deployed by this CloudFormation template.
+  DeploymentEnvironment:
+    Type: String
+    Default: test
+    AllowedValues: [test, dev, prod]
+    Description: The environment tag for this deployment.
+    ConstraintDescription: 'Must be one of: test, dev, prod.'
+  DeploymentType:
+    Type: String
+    Default: EC2  # XX_DeploymentType_XX
+    AllowedValues: [EC2, FARGATE]
+    Description: Type of resources to deploy into the cluster. EC2 is standard VM instances, Fargate is serverless.
+    ConstraintDescription: 'Must be one of: EC2, FARGATE.'
+  DesiredCapacity:
+    Type: Number
+    Default: '1'
+    Description: Number of EC2 instances to launch in your ECS cluster.
+  MaxSize:
+    Type: Number
+    Default: '3'
+    Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
+  ECSAMI:
+    Description: AMI ID
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+  InstanceType:
+    Description: EC2 instance type
+    Type: String
+    Default: t3.micro
+    AllowedValues: [t3.micro, t3.small, t3.medium, t3.large, m3.medium, m3.large,
+      m3.xlarge, m3.2xlarge, m4.large, m4.xlarge, m4.2xlarge, m4.4xlarge, m4.10xlarge,
+      c4.large, c4.xlarge, c4.2xlarge, c4.4xlarge, c4.8xlarge, c3.large, c3.xlarge,
+      c3.2xlarge, c3.4xlarge, c3.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge,
+      r3.8xlarge, i2.xlarge, i2.2xlarge, i2.4xlarge, i2.8xlarge]
+    ConstraintDescription: Please choose a valid instance type.
+
+Mappings:
+  # Hard values for the subnet masks. These masks define
+  # the range of internal IP addresses that can be assigned.
+  # The VPC can have all IP's from 10.0.0.0 to 10.0.255.255
+  # There are four subnets which cover the ranges:
+  #
+  # 11.1.0.0 - 11.1.0.255
+  # 11.1.1.0 - 11.1.1.255
+  # 11.1.2.0 - 11.1.2.255
+  # 11.1.3.0 - 11.1.3.255
+  #
+  # If you need more IP addresses (perhaps you have so many
+  # instances that you run out) then you can customize these
+  # ranges to add more
+  SubnetConfig:
+    VPC:
+      CIDR: '11.1.0.0/16'
+    PublicOne:
+      CIDR: '11.1.0.0/24'
+    PublicTwo:
+      CIDR: '11.1.1.0/24'
+    PrivateOne:
+      CIDR: '11.1.2.0/24'
+    PrivateTwo:
+      CIDR: '11.1.3.0/24'
+
+
+Resources:
+# =============================================================================
+# IAM Roles
+# -----------------------------------------------------------------------------
+  AutoscalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [application-autoscaling.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: service-autoscaling
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'application-autoscaling:*'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'ecs:DescribeServices'
+              - 'ecs:UpdateService'
+            Resource: '*'
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ec2.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'ecs:CreateCluster'
+              - 'ecs:DeregisterContainerInstance'
+              - 'ecs:DiscoverPollEndpoint'
+              - 'ecs:Poll'
+              - 'ecs:RegisterContainerInstance'
+              - 'ecs:StartTelemetrySession'
+              - 'ecs:Submit*'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'ecr:GetAuthorizationToken'
+              - 'ecr:BatchGetImage'
+              - 'ecr:GetDownloadUrlForLayer'
+            Resource: '*'
+
+  ECSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'ec2:AttachNetworkInterface'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:CreateNetworkInterfacePermission'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:DeleteNetworkInterfacePermission'
+              - 'ec2:Describe*'
+              - 'ec2:DetachNetworkInterface'
+              - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+              - 'elasticloadbalancing:DeregisterTargets'
+              - 'elasticloadbalancing:Describe*'
+              - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+              - 'elasticloadbalancing:RegisterTargets'
+            Resource: '*'
+  
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'ecr:GetAuthorizationToken'
+                - 'ecr:BatchCheckLayerAvailability'
+                - 'ecr:GetDownloadUrlForLayer'
+                - 'ecr:BatchGetImage'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'  
+
+# =============================================================================
+# Core infrastructure.
+# -----------------------------------------------------------------------------
+  # VPC in which containers will be networked.
+  # It has two public subnets, and two private subnets.
+  # We distribute the subnets across the first two available subnets
+  # for the region, for high availability.
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      CidrBlock: !FindInMap ['SubnetConfig', 'VPC', 'CIDR']
+
+  PrivateSubnetOne:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+         Fn::Select:
+         - 0
+         - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PrivateOne', 'CIDR']
+  PrivateSubnetTwo:
+    Type: AWS::EC2::Subnet
+    Properties:
+      AvailabilityZone:
+         Fn::Select:
+         - 1
+         - Fn::GetAZs: {Ref: 'AWS::Region'}
+      VpcId: !Ref 'VPC'
+      CidrBlock: !FindInMap ['SubnetConfig', 'PrivateTwo', 'CIDR']
+
+  # ECS Resources
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      CapacityProviders:
+        - !Ref 'SampleCapProvider'
+      ClusterName: !Sub ${ProjectName}-cluster
+  ECSTask1:
+    Type: AWS::ECS::TaskDefinition
+    Properties: 
+      ContainerDefinitions: 
+        -   Command: 
+              - 'sh'
+              - 'c'
+              - 'sleep infinity'
+            Essential: true
+            Image: 'amazonlinux:2'
+            Memory: 20
+            Name: 'sleep'
+      Cpu: '512'
+      #ExecutionRoleArn: String
+      #Family: String
+      #InferenceAccelerators: 
+      #  - InferenceAccelerator
+      #IpcMode: String
+      Memory: '512'
+      #NetworkMode: String
+      #PidMode: String
+      #PlacementConstraints: 
+      #  - TaskDefinitionPlacementConstraint
+      #ProxyConfiguration: 
+      #  ProxyConfiguration
+      RequiresCompatibilities: 
+        - 'EC2'
+      #Tags: 
+      #  - Tag
+      #TaskRoleArn: String
+      #Volumes: 
+      #  - Volume
+  ECSService1:
+    Type: AWS::ECS::Service
+    Properties: 
+      #CapacityProviderStrategy: 
+      #  - CapacityProviderStrategyItem
+      Cluster: !Ref 'ECSCluster'
+      #DeploymentConfiguration: 
+      #  DeploymentConfiguration
+      #DeploymentController: 
+      #  DeploymentController
+      DesiredCount: 1
+      #EnableECSManagedTags: Boolean
+      #HealthCheckGracePeriodSeconds: Integer
+      LaunchType: !Ref 'DeploymentType'
+      #LoadBalancers: 
+      #  - LoadBalancer
+      #NetworkConfiguration: 
+      #  NetworkConfiguration
+      #PlacementConstraints: 
+      #  - PlacementConstraint
+      PlacementStrategies: 
+        - Field: 'cpu'
+          Type: 'binpack'
+      #PlatformVersion: String
+      #PropagateTags: String
+      #Role: String
+      #SchedulingStrategy: String
+      #ServiceArn: String
+      ServiceName: 'mldeploy-test-service'
+      #ServiceRegistries: 
+      #  - ServiceRegistry
+      #Tags: 
+      #  - Tag
+      TaskDefinition: !Ref 'ECSTask1'
+
+  # Remove any of the following ingress rules that are not needed.
+  # If you want to make direct requests to a container using its
+  # public IP address you'll need to add a security group rule
+  # to allow traffic from all IP addresses.
+  EcsHostSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS hosts that run containers
+      VpcId: !Ref 'VPC'
+
+  EcsSecurityGroupIngressFromSelf:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      Description: Ingress from other containers in the same security group
+      GroupId: !Ref 'EcsHostSecurityGroup'
+      IpProtocol: -1
+      SourceSecurityGroupId: !Ref 'EcsHostSecurityGroup'
+  
+  # A security group for the EC2 hosts that will run the containers.
+  # Rules are added based on what ingress you choose to add to the cluster.
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS hosts that run containers
+      VpcId: !Ref 'VPC'
+
+  # Autoscaling group. This launches the actual EC2 instances that will register
+  # themselves as members of the cluster, and run the docker containers.
+  ECSAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnetOne
+        - !Ref PrivateSubnetTwo
+      LaunchConfigurationName: !Ref 'ContainerInstances'
+      MinSize: '1'
+      MaxSize: !Ref 'MaxSize'
+      DesiredCapacity: !Ref 'DesiredCapacity'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: 'true'
+  ContainerInstances:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref 'ECSAMI'
+      SecurityGroups: [!Ref 'EcsHostSecurityGroup']
+      InstanceType: !Ref 'InstanceType'
+      IamInstanceProfile: !Ref 'EC2InstanceProfile'
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: [!Ref 'EC2Role']
+
+  SampleCapProvider:
+    Type: AWS::ECS::CapacityProvider
+    Properties: 
+      AutoScalingGroupProvider: 
+        AutoScalingGroupArn: !Ref 'ECSAutoScalingGroup'
+        ManagedTerminationProtection: 'DISABLED'
+      Name: 'sample-capacity-provider'
+      Tags: 
+        - Tag
+
+
+# These are the values output by the CloudFormation template. Be careful
+# about changing any of them, because of them are exported with specific
+# names so that the other task related CF templates can use them.
+Outputs:
+  ClusterName:
+    Description: The name of the ECS cluster
+    Value: !Ref 'ECSCluster'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'ClusterName' ] ]
+  ECSRole:
+    Description: The ARN of the ECS role
+    Value: !GetAtt 'ECSRole.Arn'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'ECSRole' ] ]
+  VPCId:
+    Description: The ID of the VPC that this stack is deployed in
+    Value: !Ref 'VPC'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'VPCId' ] ]
+  PrivateSubnetOne:
+    Description: Private subnet one
+    Value: !Ref 'PrivateSubnetOne'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'PrivateSubnetOne' ] ]
+  PrivateSubnetTwo:
+    Description: Private subnet two
+    Value: !Ref 'PrivateSubnetTwo'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'PrivateSubnetTwo' ] ]
+  EcsHostSecurityGroup:
+    Description: A security group used to allow containers to receive traffic
+    Value: !Ref 'EcsHostSecurityGroup'
+    Export:
+      Name: !Join [ ':', [ !Ref 'AWS::StackName', 'EcsHostSecurityGroup' ] ]
