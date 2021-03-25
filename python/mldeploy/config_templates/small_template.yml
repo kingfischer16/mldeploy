@@ -233,6 +233,7 @@ Resources:
       CapacityProviders:
         - !Ref 'SampleCapProvider'
       ClusterName: !Sub ${ProjectName}-cluster
+  
   ECSTask1:
     Type: AWS::ECS::TaskDefinition
     Properties: 
@@ -265,6 +266,7 @@ Resources:
       #TaskRoleArn: String
       #Volumes: 
       #  - Volume
+  
   ECSService1:
     Type: AWS::ECS::Service
     Properties: 
@@ -299,6 +301,51 @@ Resources:
       #Tags: 
       #  - Tag
       TaskDefinition: !Ref 'ECSTask1'
+
+  # If EC2 instances do not have access through a NAT Gateway
+  # or are not in a public VPC, they need to be connected to the
+  # ECS service via a VPC Endpoint.
+  EcsVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties: 
+      #PolicyDocument:
+      #  Statement:
+      #    - Principal: '*'
+      #      Effect: 'Allow'
+      #      Action: ["ecs:action-1", "ecs:action-2", "ecs:action-2"]
+      #      Resource: '*'
+      PrivateDnsEnabled: 'true'
+      #RouteTableIds: 
+      #  - String
+      SecurityGroupIds: 
+        - !Ref 'EcsHostSecurityGroup'
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecs
+      SubnetIds:         
+        - !Ref PrivateSubnetOne
+        - !Ref PrivateSubnetTwo
+      VpcEndpointType: 'Interface'
+      VpcId: !Ref 'VPC'
+   
+  EcrVpcEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      #PolicyDocument:
+      #  Statement:
+      #    - Principal: !Ref 'EC2Role'
+      #      Effect: 'Allow'
+      #      Action: ["ecr:BatchGetImage", "ecr:GetDownloadUrlForLayer"]
+      #      Resource: '*'
+      PrivateDnsEnabled: 'true'
+      #RouteTableIds: 
+      #  - String
+      SecurityGroupIds: 
+        - !Ref 'EcsHostSecurityGroup'
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ecr.dkr
+      SubnetIds:         
+        - !Ref PrivateSubnetOne
+        - !Ref PrivateSubnetTwo
+      VpcEndpointType: 'Interface'
+      VpcId: !Ref 'VPC'
 
   # Remove any of the following ingress rules that are not needed.
   # If you want to make direct requests to a container using its
@@ -344,6 +391,7 @@ Resources:
     UpdatePolicy:
       AutoScalingReplacingUpdate:
         WillReplace: 'true'
+  
   ContainerInstances:
     Type: AWS::AutoScaling::LaunchConfiguration
     Properties:
@@ -351,6 +399,13 @@ Resources:
       SecurityGroups: [!Ref 'EcsHostSecurityGroup']
       InstanceType: !Ref 'InstanceType'
       IamInstanceProfile: !Ref 'EC2InstanceProfile'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
+  
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
@@ -363,9 +418,7 @@ Resources:
       AutoScalingGroupProvider: 
         AutoScalingGroupArn: !Ref 'ECSAutoScalingGroup'
         ManagedTerminationProtection: 'DISABLED'
-      Name: 'sample-capacity-provider'
-      Tags: 
-        - Tag
+      #Name: 'sample-capacity-provider'
 
 
 # These are the values output by the CloudFormation template. Be careful
