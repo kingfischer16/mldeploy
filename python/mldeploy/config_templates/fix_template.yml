@@ -1,19 +1,44 @@
+# =============================================================================
+# CloudFormation for ECS cluster using EC2 and ASG.
+# (Last modified: 2021-01-21)
+# 
+# This is the stock template for an ECS stack composed of EC2 instances and
+# autoscaling groups (ASG). This template creates all components required
+# for the cluster, including:
+#  - IAM roles
+#  - Core infrastructure: VPC, subnets, IGW, APIGW
+#  - Cluster: EC2 instances, ASG, scaling parameters
+#  - Containers and instructions
+# 
+# -----------------------------------------------------------------------------
+
 AWSTemplateFormatVersion: '2010-09-09'
-Description: A stack for deploying containerized applications onto a cluster of EC2
-             hosts using Elastic Container Service. This stack runs containers on
-             hosts that are in a private VPC subnet. Outbound network traffic from the
-             hosts must go out through a NAT gateway. There are two load balancers, one
-             inside the public subnet, which can be used to send traffic to the
-             containers in the private subnet, and one in the private subnet, which can
-             be used for private internal traffic between internal services.
+Description: Complete deployment of ECS cluster using EC2 instances with API Gateway (mldeploy) for the XX_ProjectName_XX project.
+
 Parameters:
+  ProjectName:
+    Type: String
+    Default: 'mldeploy-demo'  # 'XX_ProjectName_XX'
+    Description: The name of the project being deployed by this CloudFormation template.
+  DeploymentEnvironment:
+    Type: String
+    Default: test
+    AllowedValues: [test, dev, prod]
+    Description: The environment tag for this deployment.
+    ConstraintDescription: 'Must be one of: test, dev, prod.'
+  DeploymentType:
+    Type: String
+    Default: EC2  # XX_DeploymentType_XX
+    AllowedValues: [EC2, FARGATE]
+    Description: Type of resources to deploy into the cluster. EC2 is standard VM instances, Fargate is serverless.
+    ConstraintDescription: 'Must be one of: EC2, FARGATE.'
   DesiredCapacity:
     Type: Number
     Default: '1'
     Description: Number of EC2 instances to launch in your ECS cluster.
   MaxSize:
     Type: Number
-    Default: '4'
+    Default: '3'
     Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
   ECSAMI:
     Description: AMI ID
@@ -29,32 +54,148 @@ Parameters:
       c3.2xlarge, c3.4xlarge, c3.8xlarge, r3.large, r3.xlarge, r3.2xlarge, r3.4xlarge,
       r3.8xlarge, i2.xlarge, i2.2xlarge, i2.4xlarge, i2.8xlarge]
     ConstraintDescription: Please choose a valid instance type.
+
 Mappings:
   # Hard values for the subnet masks. These masks define
   # the range of internal IP addresses that can be assigned.
   # The VPC can have all IP's from 10.0.0.0 to 10.0.255.255
   # There are four subnets which cover the ranges:
   #
-  # 10.0.0.0 - 10.0.0.255
-  # 10.0.1.0 - 10.0.1.255
-  # 10.0.2.0 - 10.0.2.255
-  # 10.0.3.0 - 10.0.3.255
+  # 11.1.0.0 - 11.1.0.255
+  # 11.1.1.0 - 11.1.1.255
+  # 11.1.2.0 - 11.1.2.255
+  # 11.1.3.0 - 11.1.3.255
   #
   # If you need more IP addresses (perhaps you have so many
   # instances that you run out) then you can customize these
   # ranges to add more
   SubnetConfig:
     VPC:
-      CIDR: '10.0.0.0/16'
+      CIDR: '11.1.0.0/16'
     PublicOne:
-      CIDR: '10.0.0.0/24'
+      CIDR: '11.1.0.0/24'
     PublicTwo:
-      CIDR: '10.0.1.0/24'
+      CIDR: '11.1.1.0/24'
     PrivateOne:
-      CIDR: '10.0.2.0/24'
+      CIDR: '11.1.2.0/24'
     PrivateTwo:
-      CIDR: '10.0.3.0/24'
+      CIDR: '11.1.3.0/24'
+
+
 Resources:
+# =============================================================================
+# IAM Roles
+# -----------------------------------------------------------------------------
+  AutoscalingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: [application-autoscaling.amazonaws.com]
+            Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: service-autoscaling
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'application-autoscaling:*'
+              - 'cloudwatch:DescribeAlarms'
+              - 'cloudwatch:PutMetricAlarm'
+              - 'ecs:DescribeServices'
+              - 'ecs:UpdateService'
+            Resource: '*'
+
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ec2.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'ecs:CreateCluster'
+              - 'ecs:DeregisterContainerInstance'
+              - 'ecs:DiscoverPollEndpoint'
+              - 'ecs:Poll'
+              - 'ecs:RegisterContainerInstance'
+              - 'ecs:StartTelemetrySession'
+              - 'ecs:Submit*'
+              - 'logs:CreateLogStream'
+              - 'logs:PutLogEvents'
+              - 'ecr:GetAuthorizationToken'
+              - 'ecr:BatchGetImage'
+              - 'ecr:GetDownloadUrlForLayer'
+            Resource: '*'
+
+  ECSRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+      - PolicyName: ecs-service
+        PolicyDocument:
+          Statement:
+          - Effect: Allow
+            Action:
+              - 'ec2:AttachNetworkInterface'
+              - 'ec2:CreateNetworkInterface'
+              - 'ec2:CreateNetworkInterfacePermission'
+              - 'ec2:DeleteNetworkInterface'
+              - 'ec2:DeleteNetworkInterfacePermission'
+              - 'ec2:Describe*'
+              - 'ec2:DetachNetworkInterface'
+              - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
+              - 'elasticloadbalancing:DeregisterTargets'
+              - 'elasticloadbalancing:Describe*'
+              - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
+              - 'elasticloadbalancing:RegisterTargets'
+            Resource: '*'
+  
+  ECSTaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: [ecs-tasks.amazonaws.com]
+          Action: ['sts:AssumeRole']
+      Path: /
+      Policies:
+        - PolicyName: AmazonECSTaskExecutionRolePolicy
+          PolicyDocument:
+            Statement:
+            - Effect: Allow
+              Action:
+                - 'ecr:GetAuthorizationToken'
+                - 'ecr:BatchCheckLayerAvailability'
+                - 'ecr:GetDownloadUrlForLayer'
+                - 'ecr:BatchGetImage'
+                - 'logs:CreateLogStream'
+                - 'logs:PutLogEvents'
+              Resource: '*'  
+
+# =============================================================================
+# Core infrastructure.
+# -----------------------------------------------------------------------------
   # VPC in which containers will be networked.
   # It has two public subnets, and two private subnets.
   # We distribute the subnets across the first two available subnets
@@ -142,70 +283,12 @@ Resources:
       SubnetId: !Ref PublicSubnetTwo
       RouteTableId: !Ref PublicRouteTable
 
-  # Setup networking resources for the private subnets. Containers
-  # in these subnets have only private IP addresses, and must use a NAT
-  # gateway to talk to the internet. We launch two NAT gateways, one for
-  # each private subnet.
-  NatGatewayOneAttachment:
-    Type: AWS::EC2::EIP
-    DependsOn: GatewayAttachement
-    Properties:
-        Domain: vpc
-  NatGatewayTwoAttachment:
-    Type: AWS::EC2::EIP
-    DependsOn: GatewayAttachement
-    Properties:
-        Domain: vpc
-  NatGatewayOne:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayOneAttachment.AllocationId
-      SubnetId: !Ref PublicSubnetOne
-  NatGatewayTwo:
-    Type: AWS::EC2::NatGateway
-    Properties:
-      AllocationId: !GetAtt NatGatewayTwoAttachment.AllocationId
-      SubnetId: !Ref PublicSubnetTwo
-  PrivateRouteTableOne:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref 'VPC'
-  PrivateRouteOne:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTableOne
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayOne
-  PrivateRouteTableOneAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PrivateRouteTableOne
-      SubnetId: !Ref PrivateSubnetOne
-  PrivateRouteTableTwo:
-    Type: AWS::EC2::RouteTable
-    Properties:
-      VpcId: !Ref 'VPC'
-  PrivateRouteTwo:
-    Type: AWS::EC2::Route
-    Properties:
-      RouteTableId: !Ref PrivateRouteTableTwo
-      DestinationCidrBlock: 0.0.0.0/0
-      NatGatewayId: !Ref NatGatewayTwo
-  PrivateRouteTableTwoAssociation:
-    Type: AWS::EC2::SubnetRouteTableAssociation
-    Properties:
-      RouteTableId: !Ref PrivateRouteTableTwo
-      SubnetId: !Ref PrivateSubnetTwo
-
-
   # ECS Resources
   ECSCluster:
     Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${ProjectName}-cluster
 
-  # A security group for the EC2 hosts that will run the containers.
-  # Two rules, allowing network traffic from a public facing load
-  # balancer and from other hosts in the security group.
-  #
   # Remove any of the following ingress rules that are not needed.
   # If you want to make direct requests to a container using its
   # public IP address you'll need to add a security group rule
@@ -236,6 +319,14 @@ Resources:
       GroupId: !Ref 'EcsHostSecurityGroup'
       IpProtocol: -1
       SourceSecurityGroupId: !Ref 'EcsHostSecurityGroup'
+  
+  # A security group for the EC2 hosts that will run the containers.
+  # Rules are added based on what ingress you choose to add to the cluster.
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS hosts that run containers
+      VpcId: !Ref 'VPC'
 
   # Autoscaling group. This launches the actual EC2 instances that will register
   # themselves as members of the cluster, and run the docker containers.
@@ -268,66 +359,12 @@ Resources:
           echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
           yum install -y aws-cfn-bootstrap
           /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
-  AutoscalingRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: [application-autoscaling.amazonaws.com]
-          Action: ['sts:AssumeRole']
-      Path: /
-      Policies:
-      - PolicyName: service-autoscaling
-        PolicyDocument:
-          Statement:
-          - Effect: Allow
-            Action:
-              - 'application-autoscaling:*'
-              - 'cloudwatch:DescribeAlarms'
-              - 'cloudwatch:PutMetricAlarm'
-              - 'ecs:DescribeServices'
-              - 'ecs:UpdateService'
-            Resource: '*'
   EC2InstanceProfile:
     Type: AWS::IAM::InstanceProfile
     Properties:
       Path: /
       Roles: [!Ref 'EC2Role']
 
-  # Role for the EC2 hosts. This allows the ECS agent on the EC2 hosts
-  # to communciate with the ECS control plane, as well as download the docker
-  # images from ECR to run on your host.
-  EC2Role:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: [ec2.amazonaws.com]
-          Action: ['sts:AssumeRole']
-      Path: /
-      Policies:
-      - PolicyName: ecs-service
-        PolicyDocument:
-          Statement:
-          - Effect: Allow
-            Action:
-              - 'ecs:CreateCluster'
-              - 'ecs:DeregisterContainerInstance'
-              - 'ecs:DiscoverPollEndpoint'
-              - 'ecs:Poll'
-              - 'ecs:RegisterContainerInstance'
-              - 'ecs:StartTelemetrySession'
-              - 'ecs:Submit*'
-              - 'logs:CreateLogStream'
-              - 'logs:PutLogEvents'
-              - 'ecr:GetAuthorizationToken'
-              - 'ecr:BatchGetImage'
-              - 'ecr:GetDownloadUrlForLayer'
-            Resource: '*'
 
   # Load balancers for getting traffic to containers.
   # This sample template creates two load balancers:
@@ -446,44 +483,6 @@ Resources:
       Port: 80
       Protocol: HTTP
 
-  # This is an IAM role which authorizes ECS to manage resources on your
-  # account on your behalf, such as updating your load balancer with the
-  # details of where your containers are, so that traffic can reach your
-  # containers.
-  ECSRole:
-    Type: AWS::IAM::Role
-    Properties:
-      AssumeRolePolicyDocument:
-        Statement:
-        - Effect: Allow
-          Principal:
-            Service: [ecs.amazonaws.com]
-          Action: ['sts:AssumeRole']
-      Path: /
-      Policies:
-      - PolicyName: ecs-service
-        PolicyDocument:
-          Statement:
-          - Effect: Allow
-            Action:
-              # Rules which allow ECS to attach network interfaces to instances
-              # on your behalf in order for awsvpc networking mode to work right
-              - 'ec2:AttachNetworkInterface'
-              - 'ec2:CreateNetworkInterface'
-              - 'ec2:CreateNetworkInterfacePermission'
-              - 'ec2:DeleteNetworkInterface'
-              - 'ec2:DeleteNetworkInterfacePermission'
-              - 'ec2:Describe*'
-              - 'ec2:DetachNetworkInterface'
-
-              # Rules which allow ECS to update load balancers on your behalf
-              # with the information sabout how to send traffic to your containers
-              - 'elasticloadbalancing:DeregisterInstancesFromLoadBalancer'
-              - 'elasticloadbalancing:DeregisterTargets'
-              - 'elasticloadbalancing:Describe*'
-              - 'elasticloadbalancing:RegisterInstancesWithLoadBalancer'
-              - 'elasticloadbalancing:RegisterTargets'
-            Resource: '*'
 
 # These are the values output by the CloudFormation template. Be careful
 # about changing any of them, because of them are exported with specific
