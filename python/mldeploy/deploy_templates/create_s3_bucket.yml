@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Deploy a S3 bucket and bucket policy for the MLDEPLOY project.
+Parameters:
+  ProjectName:
+    Type: String
+    Description: The name of the project to be deployed.
+    AllowedPattern: '.+'
+    ConstraintDescription: Parameter ProjectName must not be empty.
+
+Resources:
+
+  S3ProjectBucket:
+    Type: AWS::S3::Bucket
+    Properties: 
+      BucketName: !Sub "mldeploy-${ProjectName}"
+      PublicAccessBlockConfiguration: 
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      Tags: 
+        - Key: Project
+          Value: !Ref ProjectName
+  
+  BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties: 
+      Bucket: !Ref S3ProjectBucket
+      PolicyDocument:
+        Statement:
+          - Action:
+            - 's3:GetObject'
+            Effect: Allow
+            Resource: !Join
+              - ''
+              - - 'arn:aws:s3:::'
+                - !Ref S3ProjectBucket
+                - /*
+            Principal:
+              Service: 'cloudformation.amazonaws.com'
+
+Outputs:
+  ProjectBucketArn:
+    Value: !GetAtt S3ProjectBucket.Arn
+    Description: The ARN of the S3 bucket used to contain the CloudFormation templates.
+    Export:
+      Name: !Sub "mldeploy-${ProjectName}-template-bucket-arn"
+  ProjectBucketUrl:
+    Value: !Sub "https://s3.amazonaws.com/${S3ProjectBucket}"
+    Description: The URL of the S3 bucket that contains the CloudFormation templates for this project deployment.
+    Export:
+      Name: !Sub "mldeploy-${ProjectName}-template-bucket-url"
+
