@@ -1,21 +1,23 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Description: API Gateway front for SQS Queue service.
 Parameters:
-  EnvironmentName:
+  ProjectName:
     Type: String
-    Default: sqs-demo
-    Description: "A name that will be used for namespacing resources."
+    Description: A name that will be used for namespacing resources.
   ResourcePathName:
     Type: String
     Default: sqs
+    Description: Resource path for the API methods.
   StageName:
     Type: String
-    Default: DeploymentState
+    Default: DeploymentStage
+    Description: Stage name for the deployment of the REST API.
   CustomApiKeyValue:
     Type: String
     Default: A1B2C3D4E5F6G7H8I9J0
-  
+    Description: The API key to use for making requests.
 
+  
 Resources:
   # Roles.
   ApiSqsSendMsgRole:
@@ -40,7 +42,7 @@ Resources:
               - Effect: Allow
                 Resource: !GetAtt SqsQueue.Arn
                 Action: ['sqs:SendMessage']
-      RoleName: apig-sqs-send-msg-role
+      RoleName: !Sub "${ProjectName}-api-sqs-send-msg-role"
 
   # SQS.
   SqsQueue:
@@ -51,7 +53,7 @@ Resources:
       KmsMasterKeyId: alias/aws/sqs
       MaximumMessageSize: 1024
       MessageRetentionPeriod: 345600
-      QueueName: !Sub ${EnvironmentName}-queue
+      QueueName: !Sub ${ProjectName}-queue
       ReceiveMessageWaitTimeSeconds: 1
       VisibilityTimeout: 30
 
@@ -61,7 +63,7 @@ Resources:
     Properties: 
       ApiKeySourceType: HEADER
       Description: A REST API for posting a message to a SQS queue.
-      Name: sqsPostNumber
+      Name: !Sub "mldeploy-${ProjectName}-api"
   
   SqsResource:
     Type: 'AWS::ApiGateway::Resource'
@@ -93,10 +95,10 @@ Resources:
           Uri: !Join
             - ""
             - - !Sub "arn:aws:apigateway:${AWS::Region}:sqs:path/${AWS::AccountId}/"
-              - !Sub ${EnvironmentName}-queue
+              - !Sub ${ProjectName}-queue
       MethodResponses:
           - StatusCode: 200
-      OperationName: PostSqsItem
+      OperationName: !Sub "mldeploy-${ProjectName}-post-json"
       ResourceId: !Ref SqsResource
       RestApiId: !Ref SqsRestApi
   
@@ -106,7 +108,7 @@ Resources:
       - 'ApiPostMsgMethod'
     Type: 'AWS::ApiGateway::Deployment'
     Properties:
-      RestApiId: !Ref 'SqsRestApi'
+      RestApiId: !Ref SqsRestApi
       Description: My deployment.
       StageName: !Ref StageName
 
@@ -155,6 +157,11 @@ Outputs:
   RestApiUrl:
     Value: !Sub "https://${SqsRestApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/${ResourcePathName}"
     Description: POST API URL for SQS.
+    Export:
+      Name: !Sub ${ProjectName}:RestApi:URL
   CustomApiKey:
     Value: !Ref CustomApiKeyValue
     Description: API key for SQS POST API method.
+    Export:
+      Name: !Sub "${ProjectName}:RestApi:Key"
+  

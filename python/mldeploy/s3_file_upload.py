@@ -19,3 +19,5 @@ if __name__ == "__main__":
 
     s3_client = boto3.client("s3")
     s3_client.upload_file(file_name, bucket_name, "api.yml")
+
+    s3_bucket_waiter = s3_client.get_waiter("bucket_exists")

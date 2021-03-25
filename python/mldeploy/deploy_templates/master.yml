@@ -9,6 +9,15 @@ Parameters:
     Type: String
     AllowedPattern: '.+'
     ConstraintDescription: Parameter S3TemplateBucketUrl must not be empty.
+  S3DataBucketArn:
+    Type: String
+    Default: 'arn:aws:s3:::mldeploy-test1'
+    Description: The S3 bucket to be used for this deployment. Must be created already.
+  CustomApiKey:
+    Type: String
+    Default: A1B2C3D4E5F6G7H8I9J0
+    Description: The API key to use for making requests.
+  
   InstanceType:
     Description: Class of EC2 instance used to host containers. Choose t3 for testing, m5 for general purpose, c5 for CPU intensive services, and r5 for memory intensive services.
     Type: String
@@ -20,11 +29,11 @@ Parameters:
     ConstraintDescription: Please choose a valid instance type.
   DesiredCapacity:
     Type: Number
-    Default: '1'
+    Default: 1
     Description: Number of EC2 instances to launch in your ECS cluster.
   MaxSize:
     Type: Number
-    Default: '6'
+    Default: 6
     Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
   ECSAMI:
     Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
@@ -34,32 +43,39 @@ Parameters:
     Type: String
     Default: 693921741570.dkr.ecr.eu-north-1.amazonaws.com/ecr-simplehttp
     Description: The ECR repository which contains the required docker image.
-  TaskDefinition:
-    Type: String
-    Default: 'arn:aws:ecs:eu-north-1:693921741570:task-definition/td-simplehttpd-ec2:5'
-    Description: Task definition for the service.
-  S3Arn:
-    Type: String
-    Default: 'arn:aws:s3:::mldeploy-test1'
-    Description: The S3 bucket to be used for this deployment. Must be created already.
 
 
 Resources:
-  
-  NetworkStack:
+    
+  SecutiryStack:
     Type: AWS::CloudFormation::Stack
     Properties:
-      TemplateURL: https://s3.amazonaws.com/ecs-refarch-cloudformation/infrastructure/vpc.yaml
+      TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/security.yml"
       Parameters:
-        EnvironmentName: !Ref AWS::StackName
+        ProjectName: !Ref ProjectName
   
-  NetworkStack:
-    Type: AWS::CloudFormation::Stack
+  # NetworkStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/network.yml"
+  #     Parameters:
+  #       ProjectName: !Ref ProjectName
+
+  # ClusterStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/cluster.yml"
   
   ApiStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/api.yml"
       Parameters:
-        EnvironmentName: !Ref AWS::StackName
+        ProjectName: !Ref ProjectName
+        CustomApiKeyValue: !Ref CustomApiKey
+  
+  # ScalingStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/scaling.yml"
   

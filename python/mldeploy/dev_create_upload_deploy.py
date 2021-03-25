@@ -1,8 +1,9 @@
 # ============================================================================
-# S3_BUCKET_CREATE.PY
+# DEV_CREATE_UPLOAD_DEPLOY.PY
 # -----------------
 # Testing launching an S3 bucket for a project via Cloudformation
-# and boto3.
+# and boto3, then uploading the templates to S3 and calling 'create stack'
+# on
 #
 # ============================================================================
 
@@ -23,41 +24,46 @@ with open(cf_filepath, "r") as f:
 yaml_obj.dump(cf_template_yaml, template_str)
 cf_template = template_str.getvalue()
 
+d_files = {
+    "master.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/master.yml",
+    "security.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/security.yml",
+    "api.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/api.yml",
+}
+
+project_name = "s3-nested-test"
+s3_stack_name = f"{project_name}-s3-stack"
+master_stack_name = f"{project_name}-master-stack"
+bucket_name = f"mldeploy-{project_name}"
+
+
 if __name__ == "__main__":
     # Create S3 bucket.
     cfn_client = boto3.client("cloudformation")
     cfn_stack_create_complete_waiter = cfn_client.get_waiter(
         waiter_name="stack_create_complete"
     )
-
-    project_name = "s3-multistep"
-    stack_name = f"{project_name}-stack"
-
     d_s3_stack_id = cfn_client.create_stack(
-        StackName=stack_name,
+        StackName=s3_stack_name,
         TemplateBody=cf_template,
         Parameters=[{"ParameterKey": "ProjectName", "ParameterValue": project_name}],
     )
-
-    cfn_stack_create_complete_waiter.wait(StackName=stack_name)
+    cfn_stack_create_complete_waiter.wait(StackName=s3_stack_name)
 
     print(f"S3 bucket stack ID: {d_s3_stack_id['StackId']}")
 
-    # Upload api template
-    bucket_name = f"mldeploy-{project_name}"
-    file_name = (
-        "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/api.yml"
-    )
-
+    # Upload nested template.
     s3_client = boto3.client("s3")
-    s3_client.upload_file(file_name, bucket_name, "api.yml")
+    for filename, filepath in d_files.items():
+        s3_client.upload_file(filepath, bucket_name, f"cloudformation/{filename}")
 
     # create stack from api template.
+    s3_folder = f"https://{bucket_name}.s3.eu-north-1.amazonaws.com"
     d_s3_stack_id = cfn_client.create_stack(
-        StackName="sqs-boto-demo",
-        TemplateURL=f"https://{bucket_name}.s3.eu-north-1.amazonaws.com/api.yml",
+        StackName=master_stack_name,
+        TemplateURL=f"{s3_folder}/cloudformation/master.yml",
         Parameters=[
-            {"ParameterKey": "EnvironmentName", "ParameterValue": "sqs-api-via-boto"}
+            {"ParameterKey": "ProjectName", "ParameterValue": project_name},
+            {"ParameterKey": "S3TemplateBucketUrl", "ParameterValue": s3_folder},
         ],
         Capabilities=["CAPABILITY_NAMED_IAM"],
     )
