@@ -28,9 +28,12 @@ d_files = {
     "master.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/master.yml",
     "security.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/security.yml",
     "api.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/api.yml",
+    "cluster.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/cluster.yml",
+    "network.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/network.yml",
+    "scaling.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/scaling.yml",
 }
 
-project_name = "s3-nested-test"
+project_name = "nested-test3"
 s3_stack_name = f"{project_name}-s3-stack"
 master_stack_name = f"{project_name}-master-stack"
 bucket_name = f"mldeploy-{project_name}"

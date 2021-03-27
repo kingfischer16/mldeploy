@@ -17,7 +17,6 @@ Parameters:
     Type: String
     Default: A1B2C3D4E5F6G7H8I9J0
     Description: The API key to use for making requests.
-  
   InstanceType:
     Description: Class of EC2 instance used to host containers. Choose t3 for testing, m5 for general purpose, c5 for CPU intensive services, and r5 for memory intensive services.
     Type: String
@@ -36,7 +35,7 @@ Parameters:
     Default: 6
     Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
   ECSAMI:
-    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Type: String #AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
     Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
     Description: The Amazon Machine Image ID used for the cluster, leave it as the default value to get the latest AMI
   EcrRepositoryUri:
@@ -46,25 +45,21 @@ Parameters:
 
 
 Resources:
-    
-  SecutiryStack:
+  
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/network.yml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+
+  SecurityStack:
     Type: AWS::CloudFormation::Stack
     Properties:
       TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/security.yml"
       Parameters:
         ProjectName: !Ref ProjectName
-  
-  # NetworkStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/network.yml"
-  #     Parameters:
-  #       ProjectName: !Ref ProjectName
-
-  # ClusterStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/cluster.yml"
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
   
   ApiStack:
     Type: AWS::CloudFormation::Stack
@@ -74,8 +69,35 @@ Resources:
         ProjectName: !Ref ProjectName
         CustomApiKeyValue: !Ref CustomApiKey
   
-  # ScalingStack:
-  #   Type: AWS::CloudFormation::Stack
-  #   Properties:
-  #     TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/scaling.yml"
+  ClusterStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/cluster.yml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+        PublicSubnetOne: !GetAtt NetworkStack.Outputs.PublicSubnetOne
+        PublicSubnetTwo: !GetAtt NetworkStack.Outputs.PublicSubnetTwo
+        ContainerSecurityGroup: !GetAtt SecurityStack.Outputs.ContainerSecurityGroup
+        EcsInstanceRole: !GetAtt SecurityStack.Outputs.EC2Role
+        InstanceType: !Ref InstanceType
+        DesiredCapacity: !Ref DesiredCapacity
+        MaxSize: !Ref MaxSize
+        ECSAMI: !Ref ECSAMI
+        EcrRepositoryUri: !Ref EcrRepositoryUri
   
+  ScalingStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/scaling.yml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        AutoScalingRoleArn: !GetAtt SecurityStack.Outputs.AutoscalingRoleArn
+        Cluster: !GetAtt ClusterStack.Outputs.ClusterName
+        ServiceName: !GetAtt ClusterStack.Outputs.ServiceName
+        MaxSize: !Ref MaxSize
+  
+
+  # AMI /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id is invalid: 
+  #   Invalid id: "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id" (expecting "ami-...") 
+  #   (Service: AmazonAutoScaling; Status Code: 400; Error Code: ValidationError; Request ID: bfe490e3-5002-4aaf-80a9-d704d6f853ea; Proxy: null)

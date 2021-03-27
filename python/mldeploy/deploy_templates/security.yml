@@ -4,9 +4,13 @@ Parameters:
   ProjectName:
     Type: String
     Description: A name that will be used for namespacing all cluster resources.
+  VpcId:
+    Type: String
+    Description: The VPC ID from the network template.
 
 Resources:
 
+  # Roles.
   AutoscalingRole:
     Type: AWS::IAM::Role
     Properties:
@@ -120,6 +124,13 @@ Resources:
                 - 'logs:CreateLogStream'
                 - 'logs:PutLogEvents'
               Resource: '*'
+  
+  # Security groups.
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS hosts that run containers.
+      VpcId: !Ref VpcId
 
 
 Outputs:
@@ -133,13 +144,19 @@ Outputs:
     Value: !GetAtt 'ECSRole.Arn'
     Export:
       Name: !Sub ${ProjectName}:ECSRole:Arn
-  EC2RoleArn:
-    Description: The ARN of the EC2 role
-    Value: !GetAtt 'EC2Role.Arn'
+  EC2Role:
+    Description: The name of the EC2 instance role.
+    Value: !Ref 'EC2Role'
     Export:
-      Name: !Sub ${ProjectName}:EC2Role:Arn
+      Name: !Sub ${ProjectName}:EC2Role
   ECSTaskExecutionRoleArn:
     Description: The ARN of the ECS role
     Value: !GetAtt 'ECSTaskExecutionRole.Arn'
     Export:
       Name: !Sub ${ProjectName}:ECSTaskExecutionRole:Arn
+  ContainerSecurityGroup:
+    Description: The security group used by the container instances in the ECS cluster.
+    Value: !Ref ContainerSecurityGroup
+    Export:
+      Name: !Sub ${ProjectName}:ContainerSecurityGroup
+

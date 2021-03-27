@@ -284,85 +284,85 @@ Outputs:
 
 
 
-  NeedToAddTaskAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties: 
-      AlarmName: sample-alarm-remove-task
-      #AlarmArn: arn:aws:cloudwatch:eu-north-1:693921741570:alarm:sample-alarm-remove-task
-      ActionsEnabled: true
-      EvaluationPeriods: 1
-      DatapointsToAlarm: 3
-      Threshold: 0
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: missing
-      Metrics:
-        - Id: e1
-          Expression: IF(taskCount < queueCount, 1, 0)
-          Label: 'Alarm to add task.'
-          ReturnData: true
-        - Id: taskCount
-          MetricStat:
-            Metric:
-              Namespace: AWS/ECS
-              MetricName: CPUUtilization
-              Dimensions:
-                - Name: ServiceName
-                  Value: simplehttp-ec2-service
-                - Name: ClusterName
-                  Value: ecs-course-ec2
-            Period: 300
-            Stat: SampleCount
-          ReturnData: false
-        - Id: queueCount
-          MetricStat:
-            Metric:
-              Namespace: AWS/SQS
-              MetricName: ApproximateNumberOfMessagesVisible
-              Dimensions:
-                - Name: QueueName
-                  Value: sqs-demo-queue
-            Period: 300
-            Stat: SampleCount
-          ReturnData: false
+  # NeedToAddTaskAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties: 
+  #     AlarmName: sample-alarm-remove-task
+  #     #AlarmArn: arn:aws:cloudwatch:eu-north-1:693921741570:alarm:sample-alarm-remove-task
+  #     ActionsEnabled: true
+  #     EvaluationPeriods: 1
+  #     DatapointsToAlarm: 3
+  #     Threshold: 0
+  #     ComparisonOperator: GreaterThanThreshold
+  #     TreatMissingData: missing
+  #     Metrics:
+  #       - Id: e1
+  #         Expression: IF(taskCount < queueCount, 1, 0)
+  #         Label: 'Alarm to add task.'
+  #         ReturnData: true
+  #       - Id: taskCount
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/ECS
+  #             MetricName: CPUUtilization
+  #             Dimensions:
+  #               - Name: ServiceName
+  #                 Value: simplehttp-ec2-service
+  #               - Name: ClusterName
+  #                 Value: ecs-course-ec2
+  #           Period: 300
+  #           Stat: SampleCount
+  #         ReturnData: false
+  #       - Id: queueCount
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/SQS
+  #             MetricName: ApproximateNumberOfMessagesVisible
+  #             Dimensions:
+  #               - Name: QueueName
+  #                 Value: sqs-demo-queue
+  #           Period: 300
+  #           Stat: SampleCount
+  #         ReturnData: false
   
-  NeedToSubtractTaskAlarm:
-    Type: AWS::CloudWatch::Alarm
-    Properties: 
-      AlarmName: sample-alarm-remove-task
-      #AlarmArn: arn:aws:cloudwatch:eu-north-1:693921741570:alarm:sample-alarm-remove-task
-      ActionsEnabled: true
-      EvaluationPeriods: 1
-      DatapointsToAlarm: 3
-      Threshold: 0
-      ComparisonOperator: GreaterThanThreshold
-      TreatMissingData: missing
-      Metrics:
-        - Id: e1
-          Expression: IF(queueCount < taskCount, 1, 0)
-          Label: 'Alarm to remove task.'
-          ReturnData: true
-        - Id: taskCount
-          MetricStat:
-            Metric:
-              Namespace: AWS/ECS
-              MetricName: CPUUtilization
-              Dimensions:
-                - Name: ServiceName
-                  Value: simplehttp-ec2-service
-                - Name: ClusterName
-                  Value: ecs-course-ec2
-            Period: 300
-            Stat: SampleCount
-          ReturnData: false
-        - Id: queueCount
-          MetricStat:
-            Metric:
-              Namespace: AWS/SQS
-              MetricName: ApproximateNumberOfMessagesVisible
-              Dimensions:
-                - Name: QueueName
-                  Value: sqs-demo-queue
-            Period: 300
-            Stat: SampleCount
-          ReturnData: false
+  # NeedToSubtractTaskAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties: 
+  #     AlarmName: sample-alarm-remove-task
+  #     #AlarmArn: arn:aws:cloudwatch:eu-north-1:693921741570:alarm:sample-alarm-remove-task
+  #     ActionsEnabled: true
+  #     EvaluationPeriods: 1
+  #     DatapointsToAlarm: 3
+  #     Threshold: 0
+  #     ComparisonOperator: GreaterThanThreshold
+  #     TreatMissingData: missing
+  #     Metrics:
+  #       - Id: e1
+  #         Expression: IF(queueCount < taskCount, 1, 0)
+  #         Label: 'Alarm to remove task.'
+  #         ReturnData: true
+  #       - Id: taskCount
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/ECS
+  #             MetricName: CPUUtilization
+  #             Dimensions:
+  #               - Name: ServiceName
+  #                 Value: simplehttp-ec2-service
+  #               - Name: ClusterName
+  #                 Value: ecs-course-ec2
+  #           Period: 300
+  #           Stat: SampleCount
+  #         ReturnData: false
+  #       - Id: queueCount
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/SQS
+  #             MetricName: ApproximateNumberOfMessagesVisible
+  #             Dimensions:
+  #               - Name: QueueName
+  #                 Value: sqs-demo-queue
+  #           Period: 300
+  #           Stat: SampleCount
+  #         ReturnData: false
   
