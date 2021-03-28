@@ -40,8 +40,8 @@ Resources:
         Cooldown: 60
         MetricAggregationType: Average
         StepAdjustments:
-        - MetricIntervalLowerBound: 0
-          ScalingAdjustment: 1
+          - MetricIntervalLowerBound: 0
+            ScalingAdjustment: 1
     
   SimpleHttpScaleInPolicy:
     Type: AWS::ApplicationAutoScaling::ScalingPolicy
@@ -54,37 +54,42 @@ Resources:
         Cooldown: 60
         MetricAggregationType: Average
         StepAdjustments:
-        - MetricIntervalLowerBound: 0
-          ScalingAdjustment: -1
+          - MetricIntervalLowerBound: -20
+            MetricInvervalUpperBound: 0
+            ScalingAdjustment: -1
   
   CPUAlarmHigh:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Scale-up if CPU > 20% for 5 minutes
+      AlarmDescription: Scale-up if CPU > 80% for 1 minute.
       MetricName: CPUUtilization
       Namespace: AWS/ECS
       Statistic: Average
-      Period: 300
+      Period: 60
       EvaluationPeriods: 1
-      Threshold: 75
+      Threshold: 80
       AlarmActions: [!Ref SimpleHttpScaleOutPolicy]
       Dimensions:
-      - Name: ServiceName
-        Value: !Ref ServiceName
+        - Name: ClusterName
+          Value: !Ref Cluster
+        - Name: ServiceName
+          Value: !Ref ServiceName
       ComparisonOperator: GreaterThanThreshold
 
   CPUAlarmLow:
     Type: AWS::CloudWatch::Alarm
     Properties:
-      AlarmDescription: Scale-down if CPU < 15% for 5 minutes
+      AlarmDescription: Scale-down if CPU < 20% for 1 minute.
       MetricName: CPUUtilization
       Namespace: AWS/ECS
       Statistic: Average
-      Period: 300
-      EvaluationPeriods: 2
+      Period: 60
+      EvaluationPeriods: 1
       Threshold: 20
       AlarmActions: [!Ref SimpleHttpScaleInPolicy]
       Dimensions:
-      - Name: ServiceName
-        Value: !Ref ServiceName
+        - Name: ClusterName
+          Value: !Ref Cluster
+        - Name: ServiceName
+          Value: !Ref ServiceName
       ComparisonOperator: LessThanThreshold

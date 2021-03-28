@@ -61,7 +61,7 @@ if __name__ == "__main__":
 
     # create stack from api template.
     s3_folder = f"https://{bucket_name}.s3.eu-north-1.amazonaws.com"
-    d_s3_stack_id = cfn_client.create_stack(
+    d_master_stack_id = cfn_client.create_stack(
         StackName=master_stack_name,
         TemplateURL=f"{s3_folder}/cloudformation/master.yml",
         Parameters=[
@@ -70,3 +70,6 @@ if __name__ == "__main__":
         ],
         Capabilities=["CAPABILITY_NAMED_IAM"],
     )
+    cfn_stack_create_complete_waiter.wait(StackName=master_stack_name)
+    print(f"Master stack ID: {d_master_stack_id['StackId']}")
+    print("Deployment complete.")
