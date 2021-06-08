@@ -86,16 +86,16 @@ Resources:
         ECSAMI: !Ref ECSAMI
         EcrRepositoryUri: !Ref EcrRepositoryUri
   
-  ScalingStack:
-    Type: AWS::CloudFormation::Stack
-    Properties:
-      TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/scaling.yml"
-      Parameters:
-        ProjectName: !Ref ProjectName
-        AutoScalingRoleArn: !GetAtt SecurityStack.Outputs.AutoscalingRoleArn
-        Cluster: !GetAtt ClusterStack.Outputs.ClusterName
-        ServiceName: !GetAtt ClusterStack.Outputs.ServiceName
-        MaxSize: !Ref MaxSize
+  # ScalingStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/scaling.yml"
+  #     Parameters:
+  #       ProjectName: !Ref ProjectName
+  #       AutoScalingRoleArn: !GetAtt SecurityStack.Outputs.AutoscalingRoleArn
+  #       Cluster: !GetAtt ClusterStack.Outputs.ClusterName
+  #       ServiceName: !GetAtt ClusterStack.Outputs.ServiceName
+  #       MaxSize: !Ref MaxSize
   
 
   # AMI /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id is invalid: 
