@@ -164,4 +164,18 @@ Outputs:
     Description: API key for SQS POST API method.
     Export:
       Name: !Sub "${ProjectName}:RestApi:Key"
-  
+  QueueURL: 
+    Description: "URL of the Amazon SQS Queue"
+    Value: !Ref SqsQueue
+  QueueARN: 
+    Description: "ARN of the AmazonSQS Queue"
+    Value: 
+      Fn::GetAtt: 
+        - "SqsQueue"
+        - "Arn"
+  QueueName: 
+    Description: "Name of the Amazon SQS Queue"
+    Value: 
+      Fn::GetAtt: 
+        - "SqsQueue"
+        - "QueueName"
