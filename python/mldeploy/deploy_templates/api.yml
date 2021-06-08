@@ -1,0 +1,167 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: API Gateway front for SQS Queue service.
+Parameters:
+  ProjectName:
+    Type: String
+    Description: A name that will be used for namespacing resources.
+  ResourcePathName:
+    Type: String
+    Default: sqs
+    Description: Resource path for the API methods.
+  StageName:
+    Type: String
+    Default: DeploymentStage
+    Description: Stage name for the deployment of the REST API.
+  CustomApiKeyValue:
+    Type: String
+    Default: A1B2C3D4E5F6G7H8I9J0
+    Description: The API key to use for making requests.
+
+  
+Resources:
+  # Roles.
+  ApiSqsSendMsgRole:
+    DependsOn: 'SqsQueue'
+    Type: AWS::IAM::Role
+    Properties: 
+      AssumeRolePolicyDocument:
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+            Action:
+              - 'sts:AssumeRole'
+      Description: Allows API Gateway to push logs tp CloudWatch logs.
+      ManagedPolicyArns:
+        - arn:aws:iam::aws:policy/service-role/AmazonAPIGatewayPushToCloudWatchLogs
+      Policies: 
+        - PolicyName: apig-sqs-send-msg-policy
+          PolicyDocument:
+            Statement:
+              - Effect: Allow
+                Resource: !GetAtt SqsQueue.Arn
+                Action: ['sqs:SendMessage']
+      RoleName: !Sub "${ProjectName}-api-sqs-send-msg-role"
+
+  # SQS.
+  SqsQueue:
+    Type: AWS::SQS::Queue
+    Properties: 
+      DelaySeconds: 0
+      KmsDataKeyReusePeriodSeconds: 1200
+      KmsMasterKeyId: alias/aws/sqs
+      MaximumMessageSize: 1024
+      MessageRetentionPeriod: 345600
+      QueueName: !Sub ${ProjectName}-queue
+      ReceiveMessageWaitTimeSeconds: 1
+      VisibilityTimeout: 30
+
+  # API Gateway.
+  SqsRestApi:
+    Type: AWS::ApiGateway::RestApi
+    Properties: 
+      ApiKeySourceType: HEADER
+      Description: A REST API for posting a message to a SQS queue.
+      Name: !Sub "mldeploy-${ProjectName}-api"
+  
+  SqsResource:
+    Type: 'AWS::ApiGateway::Resource'
+    Properties:
+      RestApiId: !Ref SqsRestApi
+      ParentId: !GetAtt SqsRestApi.RootResourceId
+      PathPart: !Ref ResourcePathName
+  
+  ApiPostMsgMethod:
+    DependsOn: 'SqsQueue'
+    Type: AWS::ApiGateway::Method
+    Properties: 
+      ApiKeyRequired: true
+      AuthorizationType: NONE
+      HttpMethod: POST
+      Integration:
+          CacheNamespace: !Ref SqsResource
+          Credentials: !GetAtt ApiSqsSendMsgRole.Arn
+          IntegrationHttpMethod: POST
+          IntegrationResponses:
+            - StatusCode: 200
+          PassthroughBehavior: NEVER
+          RequestParameters: 
+            integration.request.header.Content-Type: "'application/x-www-form-urlencoded'"
+          RequestTemplates: 
+            application/json : 'Action=SendMessage&MessageBody=$input.body'
+          TimeoutInMillis: 1200
+          Type: AWS
+          Uri: !Join
+            - ""
+            - - !Sub "arn:aws:apigateway:${AWS::Region}:sqs:path/${AWS::AccountId}/"
+              - !Sub ${ProjectName}-queue
+      MethodResponses:
+          - StatusCode: 200
+      OperationName: !Sub "mldeploy-${ProjectName}-post-json"
+      ResourceId: !Ref SqsResource
+      RestApiId: !Ref SqsRestApi
+  
+  ApiDeployment:
+    DependsOn: 
+      - 'SqsRestApi'
+      - 'ApiPostMsgMethod'
+    Type: 'AWS::ApiGateway::Deployment'
+    Properties:
+      RestApiId: !Ref SqsRestApi
+      Description: My deployment.
+      StageName: !Ref StageName
+
+  ApiKey:
+    DependsOn:
+      - 'ApiDeployment'
+    Type: AWS::ApiGateway::ApiKey
+    Properties:
+      Description: API key for posting to deployment.
+      Enabled: true
+      Name: PostApiKey
+      StageKeys: 
+        - RestApiId: !Ref SqsRestApi
+          StageName: !Ref StageName
+      Value: !Ref CustomApiKeyValue
+
+  UsagePlan:
+    DependsOn: 'ApiDeployment'
+    Type: 'AWS::ApiGateway::UsagePlan'
+    Properties:
+      ApiStages:
+        - ApiId: !Ref SqsRestApi
+          Stage: !Ref StageName
+      Description: Basic usage plan for REST API.
+      Quota:
+        Limit: 5000
+        Period: MONTH
+      Throttle:
+        BurstLimit: 200
+        RateLimit: 100
+      UsagePlanName: SimpleQueueUsagePlan
+  
+  LinkKeyAndUsagePlan:
+    DependsOn:
+      - 'ApiKey'
+      - 'UsagePlan'
+    Type: AWS::ApiGateway::UsagePlanKey
+    Properties: 
+      KeyId: !Ref ApiKey
+      KeyType: API_KEY
+      UsagePlanId: !Ref UsagePlan
+  
+
+# Output values to console for easy reference.
+Outputs:
+  RestApiUrl:
+    Value: !Sub "https://${SqsRestApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/${ResourcePathName}"
+    Description: POST API URL for SQS.
+    Export:
+      Name: !Sub ${ProjectName}:RestApi:URL
+  CustomApiKey:
+    Value: !Ref CustomApiKeyValue
+    Description: API key for SQS POST API method.
+    Export:
+      Name: !Sub "${ProjectName}:RestApi:Key"
+  

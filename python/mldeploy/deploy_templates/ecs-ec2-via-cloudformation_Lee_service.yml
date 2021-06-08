@@ -1,0 +1,368 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ECS cluster launchtype EC2.
+Parameters:
+  EnvironmentName:
+    Type: String
+    Default: ecs-course
+    Description: "A name that will be used for namespacing all cluster resources."
+  InstanceType:
+    Description: Class of EC2 instance used to host containers. Choose t3 for testing, m5 for general purpose, c5 for CPU intensive services, and r5 for memory intensive services.
+    Type: String
+    Default: t3.micro
+    AllowedValues: [ t3.micro, t3.small, t3.medium, t3.large, t3.xlarge, t3.2xlarge,
+     m5.large, m5.xlarge, m5.2large, m5.4xlarge, m5.12xlarge, m5.24large,
+     c5.large, c5.xlarge, c5.2xlarge, c5.4xlarge, c5.9xlarge, c5.18xlarge,
+     r5.large, r5.xlarge, r5.2xlarge, r5.4xlarge, r5.12xlarge, r5.24xlarge ]
+    ConstraintDescription: Please choose a valid instance type.
+  DesiredCapacity:
+    Type: Number
+    Default: '1'
+    Description: Number of EC2 instances to launch in your ECS cluster.
+  MaxSize:
+    Type: Number
+    Default: '6'
+    Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
+  ECSAMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+    Description: The Amazon Machine Image ID used for the cluster, leave it as the default value to get the latest AMI
+  EcrRepositoryUri:
+    Type: String
+    Default: 693921741570.dkr.ecr.eu-north-1.amazonaws.com/ecr-simplehttp
+    Description: The ECR repository which contains the required docker image.
+  TaskDefinition:
+    Type: String
+    Default: 'arn:aws:ecs:eu-north-1:693921741570:task-definition/td-simplehttpd-ec2:5'
+    Description: Task definition for the service.
+  AutoScalingRole:
+    Type: String
+    Default: 'arn:aws:iam::693921741570:role/ecsAutoscalingRole'
+    Description: The Autoscaling role for the scaling target.
+
+Resources:
+  
+  # ECS Resources
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub ${EnvironmentName}-ec2
+
+  # A security group for the EC2 hosts that will run the containers.
+  # Rules are added based on what ingress you choose to add to the cluster.
+  ContainerSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Access to the ECS hosts that run containers
+      VpcId: 
+        Fn::ImportValue: !Sub ${EnvironmentName}:VpcId
+  
+  # Service and task definition.
+  SimpleHttpService:
+    Type: AWS::ECS::Service
+    Properties: 
+      # CapacityProviderStrategy: 
+      #   - Base: 1
+      #     CapacityProvider: !Ref CapProvider
+      #     Weight: 1
+      Cluster: !Ref ECSCluster
+      #DeploymentConfiguration: 
+      #  DeploymentConfiguration
+      #DeploymentController: 
+      #  DeploymentController
+      DesiredCount: 5
+      #EnableECSManagedTags: Boolean
+      #HealthCheckGracePeriodSeconds: Integer
+      #LaunchType: EC2
+      #LoadBalancers: 
+      #  - LoadBalancer
+      #NetworkConfiguration: 
+      #  NetworkConfiguration
+      #PlacementConstraints: 
+      #  - PlacementConstraint
+      PlacementStrategies: 
+        - Field: 'cpu'
+          Type: 'binpack'
+      #PlatformVersion: String
+      #PropagateTags: String
+      #Role: 'arn:aws:iam::693921741570:role/ecsAutoscalingRole'
+      #SchedulingStrategy: String
+      #ServiceArn: String
+      ServiceName: simplehttp-ec2-service
+      #ServiceRegistries: 
+      #  - ServiceRegistry
+      Tags: 
+        - Key: Environment
+          Value: !Sub ${EnvironmentName}
+      TaskDefinition: !Ref TaskDefinition
+  
+  # SimmpleHttpTask:
+  #   Type: AWS::ECS::TaskDefinition
+  #   Properties: 
+  #     ContainerDefinitions: 
+  #       - ContainerDefinition
+  #     Cpu: String
+  #     ExecutionRoleArn: String
+  #     Family: String
+  #     InferenceAccelerators: 
+  #       - InferenceAccelerator
+  #     IpcMode: String
+  #     Memory: String
+  #     NetworkMode: String
+  #     PidMode: String
+  #     PlacementConstraints: 
+  #       - Type: 'distinctInstance'
+  #     ProxyConfiguration: 
+  #       ProxyConfiguration
+  #     RequiresCompatibilities: 
+  #       - String
+  #     Tags: 
+  #       - Tag
+  #     TaskRoleArn: String
+  #     Volumes: 
+  #       - Volume
+
+  ServiceScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    DependsOn: SimpleHttpService
+    Properties:
+      MaxCapacity: !Ref 'MaxSize'
+      MinCapacity: 0
+      ResourceId: !Join ['', [service/, !Ref 'ECSCluster', /, !GetAtt [SimpleHttpService, Name]]]
+      RoleARN: !Ref 'AutoScalingRole'
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+  
+  SimpleHttpScaleOutPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: simplehttp-scaleout
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref 'ServiceScalingTarget'
+      StepScalingPolicyConfiguration:
+        AdjustmentType: PercentChangeInCapacity
+        Cooldown: 60
+        MetricAggregationType: Average
+        StepAdjustments:
+        - MetricIntervalLowerBound: 0
+          ScalingAdjustment: 1
+    
+  SimpleHttpScaleInPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: simplehttp-scalein
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref 'ServiceScalingTarget'
+      StepScalingPolicyConfiguration:
+        AdjustmentType: PercentChangeInCapacity
+        Cooldown: 60
+        MetricAggregationType: Average
+        StepAdjustments:
+        - MetricIntervalLowerBound: 0
+          ScalingAdjustment: -1
+  
+  CPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-up if CPU > 20% for 5 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 1
+      Threshold: 20
+      AlarmActions: [!Ref SimpleHttpScaleOutPolicy]
+      Dimensions:
+      - Name: ServiceName
+        Value: !Ref SimpleHttpService
+      ComparisonOperator: GreaterThanThreshold
+
+  CPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-down if CPU < 15% for 5 minutes
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 300
+      EvaluationPeriods: 2
+      Threshold: 15
+      AlarmActions: [!Ref SimpleHttpScaleInPolicy]
+      Dimensions:
+      - Name: ServiceName
+        Value: !Ref SimpleHttpService
+      ComparisonOperator: LessThanThreshold
+
+
+  # Autoscaling group. This launches the actual EC2 instances that will register
+  # themselves as members of the cluster, and run the docker containers.
+  ECSAutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: 'ecs-asg-random-name-54321'
+      VPCZoneIdentifier:
+        - Fn::ImportValue: !Sub ${EnvironmentName}:PublicSubnetOne
+        - Fn::ImportValue: !Sub ${EnvironmentName}:PublicSubnetTwo
+      LaunchConfigurationName: !Ref 'ContainerInstances'
+      MinSize: '0'
+      MaxSize: !Ref 'MaxSize'
+      DesiredCapacity: !Ref 'DesiredCapacity'
+    CreationPolicy:
+      ResourceSignal:
+        Timeout: PT15M
+    UpdatePolicy:
+      AutoScalingReplacingUpdate:
+        WillReplace: 'true'
+  
+  ContainerInstances:
+    Type: AWS::AutoScaling::LaunchConfiguration
+    Properties:
+      ImageId: !Ref 'ECSAMI'
+      SecurityGroups: [!Ref 'ContainerSecurityGroup']
+      InstanceType: !Ref 'InstanceType'
+      IamInstanceProfile: !Ref 'EC2InstanceProfile'
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash -xe
+          echo ECS_CLUSTER=${ECSCluster} >> /etc/ecs/ecs.config
+          yum install -y aws-cfn-bootstrap
+          /opt/aws/bin/cfn-signal -e $? --stack ${AWS::StackName} --resource ECSAutoScalingGroup --region ${AWS::Region}
+  
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Path: /
+      Roles: [ 'ecsInstanceRole' ]
+
+  # CapProvider:
+  #   DependsOn:
+  #     - ECSAutoScalingGroup
+  #   Type: AWS::ECS::CapacityProvider
+  #   Properties: 
+  #     AutoScalingGroupProvider: 
+  #         AutoScalingGroupArn: !Ref 'ECSAutoScalingGroup'
+  #         ManagedScaling: 
+  #             MaximumScalingStepSize: 2
+  #             MinimumScalingStepSize: 1
+  #             Status: ENABLED
+  #             TargetCapacity: 100
+  #         ManagedTerminationProtection: DISABLED
+  #     Name: 'SimpleHttpCapacityProvider'
+  #     Tags: 
+  #       - Key: Environment
+  #         Value: !Sub ${EnvironmentName}
+  
+  # ClusterScaleInPolicy:
+  #   Type: AWS::AutoScaling::ScalingPolicy
+  #   Properties: 
+  #     AdjustmentType: String
+  #     AutoScalingGroupName: String
+  #     Cooldown: String
+  #     EstimatedInstanceWarmup: Integer
+  #     MetricAggregationType: String
+  #     MinAdjustmentMagnitude: Integer
+  #     PolicyType: String
+  #     ScalingAdjustment: Integer
+  #     StepAdjustments: 
+  #       - StepAdjustment
+  #     TargetTrackingConfiguration: 
+  #       TargetTrackingConfiguration
+  
+
+Outputs:
+  ClusterName:
+    Description: The name of the ECS cluster.
+    Value: !Ref 'ECSCluster'
+    Export:
+      Name: !Sub ${EnvironmentName}:ClusterName
+  
+  AutoScalingGroupArn:
+    Description: The ARN of the Autoscaling group.
+    Value: !Ref 'ECSAutoScalingGroup'
+    Export:
+      Name: !Sub ${EnvironmentName}:AsgArn
+  
+
+
+
+  # NeedToAddTaskAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties: 
+  #     AlarmName: sample-alarm-remove-task
+  #     #AlarmArn: arn:aws:cloudwatch:eu-north-1:693921741570:alarm:sample-alarm-remove-task
+  #     ActionsEnabled: true
+  #     EvaluationPeriods: 1
+  #     DatapointsToAlarm: 3
+  #     Threshold: 0
+  #     ComparisonOperator: GreaterThanThreshold
+  #     TreatMissingData: missing
+  #     Metrics:
+  #       - Id: e1
+  #         Expression: IF(taskCount < queueCount, 1, 0)
+  #         Label: 'Alarm to add task.'
+  #         ReturnData: true
+  #       - Id: taskCount
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/ECS
+  #             MetricName: CPUUtilization
+  #             Dimensions:
+  #               - Name: ServiceName
+  #                 Value: simplehttp-ec2-service
+  #               - Name: ClusterName
+  #                 Value: ecs-course-ec2
+  #           Period: 300
+  #           Stat: SampleCount
+  #         ReturnData: false
+  #       - Id: queueCount
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/SQS
+  #             MetricName: ApproximateNumberOfMessagesVisible
+  #             Dimensions:
+  #               - Name: QueueName
+  #                 Value: sqs-demo-queue
+  #           Period: 300
+  #           Stat: SampleCount
+  #         ReturnData: false
+  
+  # NeedToSubtractTaskAlarm:
+  #   Type: AWS::CloudWatch::Alarm
+  #   Properties: 
+  #     AlarmName: sample-alarm-remove-task
+  #     #AlarmArn: arn:aws:cloudwatch:eu-north-1:693921741570:alarm:sample-alarm-remove-task
+  #     ActionsEnabled: true
+  #     EvaluationPeriods: 1
+  #     DatapointsToAlarm: 3
+  #     Threshold: 0
+  #     ComparisonOperator: GreaterThanThreshold
+  #     TreatMissingData: missing
+  #     Metrics:
+  #       - Id: e1
+  #         Expression: IF(queueCount < taskCount, 1, 0)
+  #         Label: 'Alarm to remove task.'
+  #         ReturnData: true
+  #       - Id: taskCount
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/ECS
+  #             MetricName: CPUUtilization
+  #             Dimensions:
+  #               - Name: ServiceName
+  #                 Value: simplehttp-ec2-service
+  #               - Name: ClusterName
+  #                 Value: ecs-course-ec2
+  #           Period: 300
+  #           Stat: SampleCount
+  #         ReturnData: false
+  #       - Id: queueCount
+  #         MetricStat:
+  #           Metric:
+  #             Namespace: AWS/SQS
+  #             MetricName: ApproximateNumberOfMessagesVisible
+  #             Dimensions:
+  #               - Name: QueueName
+  #                 Value: sqs-demo-queue
+  #           Period: 300
+  #           Stat: SampleCount
+  #         ReturnData: false
+  

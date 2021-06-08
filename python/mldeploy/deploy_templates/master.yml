@@ -1,0 +1,103 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Master template for MLDEPLOY project.
+Parameters:
+  ProjectName:
+    Type: String
+    Default: <<PROJECT-NAME>>
+    Description: The name of the project to be deployed.
+  S3TemplateBucketUrl:
+    Type: String
+    AllowedPattern: '.+'
+    ConstraintDescription: Parameter S3TemplateBucketUrl must not be empty.
+  S3DataBucketArn:
+    Type: String
+    Default: 'arn:aws:s3:::mldeploy-test1'
+    Description: The S3 bucket to be used for this deployment. Must be created already.
+  CustomApiKey:
+    Type: String
+    Default: A1B2C3D4E5F6G7H8I9J0
+    Description: The API key to use for making requests.
+  InstanceType:
+    Description: Class of EC2 instance used to host containers. Choose t3 for testing, m5 for general purpose, c5 for CPU intensive services, and r5 for memory intensive services.
+    Type: String
+    Default: t3.micro
+    AllowedValues: [ t3.micro, t3.small, t3.medium, t3.large, t3.xlarge, t3.2xlarge,
+     m5.large, m5.xlarge, m5.2large, m5.4xlarge, m5.12xlarge, m5.24large,
+     c5.large, c5.xlarge, c5.2xlarge, c5.4xlarge, c5.9xlarge, c5.18xlarge,
+     r5.large, r5.xlarge, r5.2xlarge, r5.4xlarge, r5.12xlarge, r5.24xlarge ]
+    ConstraintDescription: Please choose a valid instance type.
+  DesiredCapacity:
+    Type: Number
+    Default: 1
+    Description: Number of EC2 instances to launch in your ECS cluster.
+  MaxSize:
+    Type: Number
+    Default: 6
+    Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
+  ECSAMI:
+    Type: String #AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id
+    Description: The Amazon Machine Image ID used for the cluster, leave it as the default value to get the latest AMI
+  EcrRepositoryUri:
+    Type: String
+    Default: 693921741570.dkr.ecr.eu-north-1.amazonaws.com/ecr-simplehttp
+    Description: The ECR repository which contains the required docker image.
+
+
+Resources:
+  
+  NetworkStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/network.yml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+
+  SecurityStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/security.yml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+  
+  ApiStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/api.yml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        CustomApiKeyValue: !Ref CustomApiKey
+  
+  ClusterStack:
+    Type: AWS::CloudFormation::Stack
+    Properties:
+      TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/cluster.yml"
+      Parameters:
+        ProjectName: !Ref ProjectName
+        VpcId: !GetAtt NetworkStack.Outputs.VpcId
+        PublicSubnetOne: !GetAtt NetworkStack.Outputs.PublicSubnetOne
+        PublicSubnetTwo: !GetAtt NetworkStack.Outputs.PublicSubnetTwo
+        ContainerSecurityGroup: !GetAtt SecurityStack.Outputs.ContainerSecurityGroup
+        EcsInstanceRole: !GetAtt SecurityStack.Outputs.EC2Role
+        InstanceType: !Ref InstanceType
+        DesiredCapacity: !Ref DesiredCapacity
+        MaxSize: !Ref MaxSize
+        ECSAMI: !Ref ECSAMI
+        EcrRepositoryUri: !Ref EcrRepositoryUri
+  
+  # ScalingStack:
+  #   Type: AWS::CloudFormation::Stack
+  #   Properties:
+  #     TemplateURL: !Sub "${S3TemplateBucketUrl}/cloudformation/scaling.yml"
+  #     Parameters:
+  #       ProjectName: !Ref ProjectName
+  #       AutoScalingRoleArn: !GetAtt SecurityStack.Outputs.AutoscalingRoleArn
+  #       Cluster: !GetAtt ClusterStack.Outputs.ClusterName
+  #       ServiceName: !GetAtt ClusterStack.Outputs.ServiceName
+  #       MaxSize: !Ref MaxSize
+  
+
+  # AMI /aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id is invalid: 
+  #   Invalid id: "/aws/service/ecs/optimized-ami/amazon-linux-2/recommended/image_id" (expecting "ami-...") 
+  #   (Service: AmazonAutoScaling; Status Code: 400; Error Code: ValidationError; Request ID: bfe490e3-5002-4aaf-80a9-d704d6f853ea; Proxy: null)

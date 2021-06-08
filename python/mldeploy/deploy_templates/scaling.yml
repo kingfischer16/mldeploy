@@ -1,0 +1,95 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: Template for the scaling alarms and behavior of the cluster.
+Parameters:
+  ProjectName:
+    Type: String
+    Description: A name that will be used for namespacing resources.
+  AutoScalingRoleArn:
+    Type: String
+  Cluster:
+    Type: String
+    Description: The ECS cluster.
+  ServiceName:
+    Type: String
+    Description: The ECS service name.
+  MaxSize:
+    Type: Number
+    Description: Maximum number of EC2 instances that can be launched in your ECS cluster.
+
+
+Resources:
+
+  ServiceScalingTarget:
+    Type: AWS::ApplicationAutoScaling::ScalableTarget
+    Properties:
+      MaxCapacity: !Ref 'MaxSize'
+      MinCapacity: 0
+      ResourceId: !Join ['', [service/, !Ref 'Cluster', /, !Ref 'ServiceName']]
+      RoleARN: !Ref 'AutoScalingRoleArn'
+      ScalableDimension: ecs:service:DesiredCount
+      ServiceNamespace: ecs
+  
+  SimpleHttpScaleOutPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: mldeploy-ecs-scaleout
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref 'ServiceScalingTarget'
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 60
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalLowerBound: 0
+            ScalingAdjustment: 1
+    
+  SimpleHttpScaleInPolicy:
+    Type: AWS::ApplicationAutoScaling::ScalingPolicy
+    Properties:
+      PolicyName: mldeploy-ecs-scalein
+      PolicyType: StepScaling
+      ScalingTargetId: !Ref 'ServiceScalingTarget'
+      StepScalingPolicyConfiguration:
+        AdjustmentType: ChangeInCapacity
+        Cooldown: 60
+        MetricAggregationType: Average
+        StepAdjustments:
+          - MetricIntervalLowerBound: -20
+            MetricInvervalUpperBound: 0
+            ScalingAdjustment: -1
+  
+  CPUAlarmHigh:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-up if CPU > 80% for 1 minute.
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 80
+      AlarmActions: [!Ref SimpleHttpScaleOutPolicy]
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+        - Name: ServiceName
+          Value: !Ref ServiceName
+      ComparisonOperator: GreaterThanThreshold
+
+  CPUAlarmLow:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      AlarmDescription: Scale-down if CPU < 20% for 1 minute.
+      MetricName: CPUUtilization
+      Namespace: AWS/ECS
+      Statistic: Average
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 20
+      AlarmActions: [!Ref SimpleHttpScaleInPolicy]
+      Dimensions:
+        - Name: ClusterName
+          Value: !Ref Cluster
+        - Name: ServiceName
+          Value: !Ref ServiceName
+      ComparisonOperator: LessThanThreshold
