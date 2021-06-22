@@ -157,13 +157,13 @@ Outputs:
   RestApiUrl:
     Value: !Sub "https://${SqsRestApi}.execute-api.${AWS::Region}.amazonaws.com/${StageName}/${ResourcePathName}"
     Description: POST API URL for SQS.
-    Export:
-      Name: !Sub ${ProjectName}:RestApi:URL
+    # Export:
+    #   Name: !Sub ${ProjectName}:RestApi:URL
   CustomApiKey:
     Value: !Ref CustomApiKeyValue
     Description: API key for SQS POST API method.
-    Export:
-      Name: !Sub "${ProjectName}:RestApi:Key"
+    # Export:
+    #   Name: !Sub "${ProjectName}:RestApi:Key"
   QueueURL: 
     Description: "URL of the Amazon SQS Queue"
     Value: !Ref SqsQueue

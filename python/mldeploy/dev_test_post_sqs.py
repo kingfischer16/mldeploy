@@ -15,7 +15,7 @@ import json
 AWS_SQS_URL = (
     "https://n123k4vv68.execute-api.eu-north-1.amazonaws.com/DeploymentStage/sqs"
 )
-NUM_INTEGERS = 10
+NUM_INTEGERS = 5
 API_KEY = "A1B2C3D4E5F6G7H8I9J0"
 
 if __name__ == "__main__":

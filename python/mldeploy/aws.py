@@ -60,6 +60,10 @@ def _add_cloudformation_template(name: str) -> NoReturn:
 # -----------------------------------------------------------------------------
 def _create_cloudformation_file(name: str) -> NoReturn:
     """
+    ### CHANGE TO METHOD - NO MORE CHANGING TEMPLATE FILE ###
+    Template file remains unchanged. Any mods are passed as parameters to master stack creation.
+
+
     Creates and registers a CloudFormation JSON file.
 
     Args:
@@ -110,6 +114,7 @@ def _create_stack_id(name: str) -> str:
 
 def _add_project_s3_bucket(name: str) -> NoReturn:
     """
+    ### CHANGE TO METHOD - NO MORE CHANGING TEMPLATE FILE ###
     Adds a project bucket to the CloudFormation file with the naming
     convention:
         mldeploy_store_<project name>_<date>
@@ -129,6 +134,7 @@ def _add_project_s3_bucket(name: str) -> NoReturn:
 
 def _add_ec2_instance(name: str) -> NoReturn:
     """
+    ### CHANGE TO METHOD - NO MORE CHANGING TEMPLATE FILE ###
     Sample function. Adds EC2 instance.
     """
     cf_data = _get_cloudformation_template_data(name)
@@ -211,6 +217,16 @@ def _deploy_stack(name: str) -> NoReturn:
     """
     Deploys the stack to AWS for the given project using CloudFormation.
 
+    Deploying the stack should consist of:
+        - creating the temporary S3 bucket for template upload
+        - upload docker image (stage 2)
+        - uploading the template files
+        - get parameters from config: S3 data bucket, cluster size, EC2 type,
+        - create the master stack
+        - wait for the stack creation to finish --> "waiter"
+        - register: queue url, api key, api key
+        - remove temporary S3 bucket (if not being used for docker repo)
+
     Args:
         name (str): The project name.
     """
@@ -221,9 +237,7 @@ def _deploy_stack(name: str) -> NoReturn:
         )
         return
     # Create stack name.
-    stack_name = (
-        f"{name}-mldeploy-{_get_field_if_exists(name, _get_constant('SALT_KEY'))}"
-    )
+    stack_name = f"mldeploy-{name}"
     # Get template.
     yaml_obj = ryml.YAML()
     cf_filepath = _get_field_if_exists(
@@ -293,3 +307,39 @@ def _register_deployment(
         else _get_constant("STATUS_NOT_DEPLOYED")
     )
     _add_field_to_registry(name, _get_constant("DEPLOY_STATUS_KEY"), deploy_status)
+
+
+# ============================================================================
+# Registration functions.
+def _register_stack_data(name: str):
+    """"""
+    keys_list = ["RestApiUrl", "RestApiKey", "QueueUrl"]
+
+
+def _get_stack_output(stack_name: str, output_key: str):
+    """
+    Gets the output value for a given stack and key.
+
+    Args:
+        stack_name (str): Name of the master stack.
+
+        output_key (str): The output key of the value to be retrieved.
+
+    Returns:
+        (str): The value of the output.
+
+    Raises:
+        ValueError: If the output key is not found for the specified stack.
+    """
+    cfn_client = boto3.client("cloudformation")
+    rsp = cfn_client.describe_stacks(StackName=stack_name)
+    output_list = rsp["Stacks"][0]["Outputs"]
+    output_value = None
+    for list_item in output_list:
+        if list_item["OutputKey"] == output_key:
+            output_value = list_item["OutputValue"]
+            break
+    if not output_value:
+        raise ValueError(f"Output key [{output_key}] not found in stack [{stack_name}]")
+    else:
+        return output_value

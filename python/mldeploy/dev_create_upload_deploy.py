@@ -33,7 +33,7 @@ d_files = {
     "scaling.yml": "/home/lee/GitProjects/mldeploy/python/mldeploy/deploy_templates/scaling.yml",
 }
 
-project_name = "api-test-1"
+project_name = "mld"
 s3_stack_name = f"{project_name}-s3-stack"
 master_stack_name = f"{project_name}-master-stack"
 bucket_name = f"mldeploy-{project_name}"
