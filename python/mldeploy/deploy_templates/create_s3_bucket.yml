@@ -6,13 +6,17 @@ Parameters:
     Description: The name of the project to be deployed.
     AllowedPattern: '.+'
     ConstraintDescription: Parameter ProjectName must not be empty.
+  S3BucketName:
+    Type: String
+    Description: Name of the S3 bucket to create.
+    AllowedPattern: '.+'
 
 Resources:
 
   S3ProjectBucket:
     Type: AWS::S3::Bucket
     Properties: 
-      BucketName: !Sub "mldeploy-${ProjectName}"
+      BucketName: !Ref S3BucketName
       PublicAccessBlockConfiguration: 
         BlockPublicAcls: true
         BlockPublicPolicy: true
