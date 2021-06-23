@@ -78,14 +78,20 @@ aws-region: eu-north-1
 number-availability-zones: 2  # integer, is there a reason this needs to be anything but 2?
 
 deployment-type: 'fargate'  # 'fargate' or 'ec2', only EC2 can use GPU resources
-use-autoscaling: yes  # yes or no
+#ec2-instance-type: t3.micro  # string, EC2 instance type (if deployment type is 'EC2')
+use-autoscaling: no  # yes or no
 min-instances: 1  # integer
-target-instances: 1  # integer
+desired-instances: 1  # integer
 max-instances: 3  # integer, must be greater than min-instances
 increase-delay: 10  # seconds, time before instance is added after increase trigger
 decrease-delay: 300  # seconds, time before instance is removed after decrease trigger
 max-jobs-per-instance-before-scaleup: 3  # integer, maximum number of jobs allowed (per active instance) in queue before an instance is added, no scaleup trigger set if none provided
 min-jobs-per-instance-before-scaledown: 1  # intever, minimum number of jobs allowed (per active instance) in queue before an instance is removed, no scaledown trigger set if none provided
 
+instance-type: t3.micro
 min-cpus: 1  # float, minimum number of vCPU resources each instance needs to run
 min-ram: 1  # float, GB, minimum amount of memory each instance needs to run
+
+# 4.2. API settings
+# Configure the REST API interface.
+api-key: ABC123  # string, key for accessing the API

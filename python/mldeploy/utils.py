@@ -31,7 +31,7 @@ from typing import NoReturn, List, Union, Dict, Any
 # =============================================================================
 # Constant getter.
 # -----------------------------------------------------------------------------
-def _get_constant(key: str) -> Union[str, list]:
+def _get_constant(key: str) -> Union[str, list, Dict]:
     """
     Returns a string value for a constant used elsewhere in
     the code. All constants are defined here.
@@ -47,6 +47,8 @@ def _get_constant(key: str) -> Union[str, list]:
         "CURR_DIR": str(os.path.dirname(os.path.realpath(__file__))),
         "TEMPLATES_FOLDER": str(os.path.dirname(os.path.realpath(__file__)))
         + "/config_templates",
+        "DEPLOY_TEMPLATES_FOLDER": str(os.path.dirname(os.path.realpath(__file__)))
+        + "/deploy_templates",
         "PLATFORM": sys.platform,
         "DOCKER_LOG_FOLDER": "docker_build_logs",
         "DOCKER_LOG_FILE_TAG": "_docker_build_log_",

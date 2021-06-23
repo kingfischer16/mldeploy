@@ -24,6 +24,7 @@ import os
 from typing import NoReturn, Dict
 from .utils import (
     _add_field_to_registry,
+    _get_config_data,
     _get_field_if_exists,
     _add_field_to_registry,
     _get_project_folder,
@@ -51,36 +52,77 @@ def _deploy_stack(name: str) -> NoReturn:
     Args:
         name (str): The project name.
     """
+    # Don't deploy if the project is already deployed.
     deployed_status = _get_field_if_exists(name, _get_constant("DEPLOY_STATUS_KEY"))
     if deployed_status == _get_constant("STATUS_DEPLOYED"):
         print(
             f"{_get_constant('FAIL_PREFIX')}Deployment failed for project '{name}. A stack is already deployed for this project."
         )
         return
-    # Prepare parameters for stack creation.
-    master_stack_name = f"mldeploy-{name}"
-    s3_stack_name, s3_bucket_name = _deploy_s3_bucket(name)
+
+    # Create S3 bucket and upload template files.
+    s3_bucket_name = f"mldeploy-templates-{name}"  # Project and bucket name.
+    s3_bucket_arn = _deploy_s3_bucket(s3_bucket_name)
+    deploy_templates_folder = _get_constant("DEPLOY_TEMPLATES_FOLDER")
+    templates_list = [
+        "master.yml",
+        "security.yml",
+        "api.yml",
+        "cluster.yml",
+        "network.yml",
+        "scaling.yml",
+    ]
+    _upload_files_to_s3(
+        bucket_name=s3_bucket_name,
+        files_dict={
+            f"cloudformation/{f}": f"{deploy_templates_folder}/{f}"
+            for f in templates_list
+        },
+    )
 
     # Get parameters from config file.
-
-    # Create
-    yaml_obj = ryml.YAML()
-    cf_filepath = _get_field_if_exists(
-        name, _get_constant("CLOUDFORMATION_LOCATION_KEY")
+    d_config_params = _get_deployment_config_data(name)
+    master_stack_name = f"mldeploy-{name}"
+    s3_folder_url = (
+        f"https://{s3_bucket_name}.s3.{d_config_params['aws-region']}amazonaws.com"
     )
-    with open(cf_filepath, "r") as f:
-        cf_template_yaml = yaml_obj.load(f)
-    cf_template = json.dumps(cf_template_yaml)
-    # Create client.
-    client = boto3.client("cloudformation")
-    # Create stack.
-    d_stack_id = client.create_stack(StackName=stack_name, TemplateBody=cf_template)
-    stack_id = d_stack_id["StackId"]
+
+    # Deploy master stack.
+    cfn_client = boto3.client("cloudformation")
+    cfn_stack_create_complete_waiter = cfn_client.get_waiter(
+        waiter_name="stack_create_complete"
+    )
+    d_master_stack = cfn_client.create_stack(
+        StackName=master_stack_name,
+        TemplateURL=f"{s3_folder_url}/cloudformation/master.yml",
+        Parameters=[
+            {"ParameterKey": "ProjectName", "Parameter Value": name},
+            {"ParameterKey": "S3TemplateBucketUrl", "Parameter Value": s3_folder_url},
+            {
+                "ParameterKey": "CustomApiKey",
+                "Parameter Value": d_config_params["api-key"],
+            },
+            {
+                "ParameterKey": "InstanceType",
+                "Parameter Value": d_config_params["instance-type"],
+            },
+            {
+                "ParameterKey": "DesiredCapacity",
+                "Parameter Value": d_config_params["desired-instances"],
+            },
+            {
+                "ParameterKey": "MaxSize",
+                "Parameter Value": d_config_params["max-instances"],
+            },
+        ],
+    )
+
+    stack_id = d_master_stack["StackId"]
     print(
         f"{_get_constant('MSG_PREFIX')}Deployment created successfully for project '{name}'.\n\tStack ID: {stack_id}"
     )
     # Register stack.
-    _register_deployment(name, stack_name, stack_id, deployed=True)
+    _register_deployment(name, master_stack_name, stack_id, deployed=True)
 
 
 def _undeploy_stack(name: str) -> NoReturn:
@@ -137,25 +179,22 @@ def _register_deployment(
 # =============================================================================
 # Deployment subfunctions.
 # -----------------------------------------------------------------------------
-def _deploy_s3_bucket(name: str) -> str:
+def _deploy_s3_bucket(bucket_name: str) -> str:
     """
     Deploys a S3 bucket to contain the templates for the CloudFormation
     deployment.
 
     Args:
-        name (str): The project name.
+        bucket_name (str): The name of the S3 bucket to deploy.
 
     Returns:
-        (str): The S3 bucket stack name and bucket name.
+        (str): The S3 bucket ARN.
     """
-    s3_stack_name = f"mldeploy-s3-templates-{name}"
-    bucket_name = f"mldeploy-s3-{name}"
-
     yaml_obj = ryml.YAML()
     yaml_obj.preserve_quotes = True
     template_str = io.StringIO()
 
-    cf_filepath = "./deploy_templates/create_s3_bucket.yml"
+    cf_filepath = f"{_get_constant('DEPLOY_TEMPLATES_FOLDER')}/create_s3_bucket.yml"
 
     with open(cf_filepath, "r") as f:
         cf_template_yaml = yaml_obj.load(f)
@@ -168,22 +207,29 @@ def _deploy_s3_bucket(name: str) -> str:
         waiter_name="stack_create_complete"
     )
     d_s3_stack_id = cfn_client.create_stack(
-        StackName=s3_stack_name,
+        StackName=bucket_name,
         TemplateBody=cf_template,
         Parameters=[
-            {"ParameterKey": "ProjectName", "ParameterValue": name},
+            {"ParameterKey": "ProjectName", "ParameterValue": bucket_name},
             {"ParameterKey": "S3BucketName", "ParameterValue": bucket_name},
         ],
     )
-    cfn_stack_create_complete_waiter.wait(StackName=s3_stack_name)
+    cfn_stack_create_complete_waiter.wait(StackName=bucket_name)
 
     print(
         f"{_get_constant('MSG_PREFIX')}S3 Bucket successfully deployed. Stack Id: {d_s3_stack_id['StackId']}"
     )
-    return s3_stack_name, bucket_name
+
+    rsp = cfn_client.describe_stacks(StackName=bucket_name)
+    s3_arn = None
+    for output_item in rsp["Stacks"][0]["Outputs"]:
+        if output_item["OutputKey"] == "ProjectBucketArn":
+            s3_arn = output_item["OutputValue"]
+            break
+    return s3_arn
 
 
-def _upload_files_to_s3(bucket_name: str, files_dict: dict) -> NoReturn:
+def _upload_files_to_s3(bucket_name: str, files_dict: Dict) -> NoReturn:
     """
     Uploads a series of files to a specified S3 bucket.
 
@@ -197,125 +243,47 @@ def _upload_files_to_s3(bucket_name: str, files_dict: dict) -> NoReturn:
     s3_client = boto3.client("s3")
     for filename, filepath in files_dict.items():
         s3_client.upload_file(filepath, bucket_name, filename)
-
-
-def _create_cloudformation_file(name: str) -> NoReturn:
-    """
-    ### CHANGE TO METHOD - NO MORE CHANGING TEMPLATE FILE ###
-    Template file remains unchanged. Any mods are passed as parameters to master stack creation.
-
-
-    Creates and registers a CloudFormation JSON file.
-
-    Args:
-        name (str): Name of the project to create the cloudformation file.
-
-    Raises:
-        FileExistsError: If the CloudFormation template already exists.
-         To prevent overwriting.
-    """
-    proj_folder = _get_field_if_exists(name, _get_constant("PROJ_FOLDER_KEY"))
-    cf_filename = proj_folder + "/" + _get_constant("CLOUDFORMATION_FILE_NAME")
-    if os.path.exists(cf_filename):
-        raise FileExistsError(
-            f"A CloudFormation template already exists at the location: {cf_filename}"
-        )
-    template_desc = f"CloudFormation template generated by MLDEPLOY for {name} project."
-    file_contents = {
-        "AWSTemplateFormatVersion": "2010-09-09",
-        "Description": template_desc,
-        "Resources": {},
-        "Parameters": {},
-        "Mappings": {},
-        "Metadata": {},
-    }
-    yaml_obj = ryml.YAML()
-    with open(cf_filename, "w") as f:
-        yaml_obj.dump(file_contents, f)
-    # Register the CloudFormation template file in the registry.
-    _add_field_to_registry(
-        name, _get_constant("CLOUDFORMATION_LOCATION_KEY"), cf_filename
+    print(
+        f"{_get_constant('MSG_PREFIX')}Template files successfully uploaded to S3 bucket."
     )
-    # Register a project hash, for ensuring
 
 
-def _create_stack_id(name: str) -> str:
+def _get_deployment_config_data(name: str) -> Dict:
     """
-    Creates a stack name that should be unique within the region.
+    Returnss the following data from a project config file:
+        - Region
+        - custom API key
+        - desired number of instances in cluster
+        - maximum allowed number of instances in cluster
+        - cluster type (Fargate or EC2)
+        - instance type (if EC2 cluster)
 
     Args:
-        name (str): Name of the project for which to create the stack ID.
+        name (str): Name of the project.
 
     Returns:
-        (str): The generated stack name.
+        (dict): Key-value pairs of parameters for deployment.
     """
-    dt_string = datetime.now().strftime("%Y%m%d-%H%M%S")
-    return name + "_" + dt_string
-
-
-def _add_project_s3_bucket(name: str) -> NoReturn:
-    """
-    ### CHANGE TO METHOD - NO MORE CHANGING TEMPLATE FILE ###
-    Adds a project bucket to the CloudFormation file with the naming
-    convention:
-        mldeploy_store_<project name>_<date>
-
-    Args:
-        name (str): Name of the project for which to create the bucket.
-    """
-    cf_data = _get_cloudformation_template_data(name)
-    cf_data["Resources"][f"{_get_constant('S3_STORE_PREF')}{name}"] = {
-        "Type": "AWS::S3::Bucket",
-        "Properties": {
-            "BucketName": f"{name}-store-{_get_field_if_exists(name, _get_constant('SALT_KEY'))}"
-        },
+    d_config = _get_config_data(name)
+    config_param_keys = [
+        "aws-region",
+        "deployment-type",
+        "api-key",
+        "desired-instances",
+        "max-instances",
+        "ec2-instance-type",
+    ]
+    d_deploy_params = {
+        k: d_config[k] for k in config_param_keys if k in d_config.keys()
     }
-    _update_cloudformation_template_data(name, cf_data)
+    return d_deploy_params
 
 
-def _add_ec2_instance(name: str) -> NoReturn:
-    """
-    ### CHANGE TO METHOD - NO MORE CHANGING TEMPLATE FILE ###
-    Sample function. Adds EC2 instance.
-    """
-    cf_data = _get_cloudformation_template_data(name)
-    cf_data["Resources"][f"EC2{name}01"] = {
-        "Type": "AWS::EC2::Instance",
-        "Properties": {
-            "InstanceType": "t3.micro",
-            "ImageId": "ami-02cb52d7ba9887a93",
-            "AvailabilityZone": "eu-north-1a",
-        },
-    }
-    _update_cloudformation_template_data(name, cf_data)
+# def _update_cloudformation_template_data(name, cf_data):
 
 
 # =============================================================================
-# CloudFormation template creation function, top level.
-# -----------------------------------------------------------------------------
-def _add_cloudformation_template(name: str) -> NoReturn:
-    """
-    Adds the CloudFormation template to the configuration folder.
-
-    This function should be called during the build phase.
-
-    Args:
-        name (str): Name of the project to create the cloudformation file.
-    """
-    if os.path.exists(
-        _get_field_if_exists(name, _get_constant("CLOUDFORMATION_LOCATION_KEY"))
-    ):
-        print(
-            f"{_get_constant('MSG_PREFIX')}CloudFormation template already exists for project '{name}'. Existing template was not overwritten."
-        )
-    else:
-        _create_cloudformation_file(name)
-        _add_project_s3_bucket(name)
-        _add_ec2_instance(name)
-
-
-# =============================================================================
-# CloudFormation template manipulations.
+# CloudFormation template interactions.
 # -----------------------------------------------------------------------------
 def _get_cloudformation_template_data(name: str) -> Dict:
     """
