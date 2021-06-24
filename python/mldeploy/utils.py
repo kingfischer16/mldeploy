@@ -56,14 +56,19 @@ def _get_constant(key: str) -> Union[str, list, Dict]:
         "CLOUDFORMATION_FILE_NAME": ".cloudformation.yml",
         # AWS prefix names.
         "S3_STORE_PREF": "mldeployStore",
+        "S3_TEMPLATE_BUCKET": "Templates Bucket",
         # Registry key names.
         "CLOUDFORMATION_LOCATION_KEY": "cloudformation_template",
-        "DEPLOY_STATUS_KEY": "deployment_status",
+        "DEPLOY_STATUS_KEY": "Deployment Status",
         "DOCKER_IMAGE_KEY": "docker-image",
-        "PROJ_FOLDER_KEY": "location",
+        "PROJ_FOLDER_KEY": "Location",
         "SALT_KEY": "salt",
-        "STACK_NAME_KEY": "stack_name",
-        "STACK_ID_KEY": "stack_id",
+        "STACK_NAME_KEY": "Stack Name",
+        "STACK_ID_KEY": "Stack ID",
+        "SQS_URL_KEY": "SQS Queue URL",
+        "API_URL_KEY": "REST API URL",
+        "API_KEY_KEY": "API Key",
+        "SQS_ARN_KEY": "SQS Queue ARN",
         # Standard values in registry.
         "STATUS_DEPLOYED": "Deployed",
         "STATUS_NOT_DEPLOYED": "Not deployed",
